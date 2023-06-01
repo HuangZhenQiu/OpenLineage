@@ -1,0 +1,49 @@
+schemaVersion: 2.0
+  machine:
+    baseImage: docker.apple.com/cpbuild7/applejdk-8
+    env:
+      RUNTIME_JDK_VERSION: applejdk-8
+pipelines:
+  - branchName: 0.20.4-ase-apple
+    name: openlineage-ase-apple-prb
+    build:
+      template: freestyle:v4:prb
+      steps:
+        - cd ./client/java
+        - ./gradlew --no-daemon publishToMavenLocal
+        - cd ../../integration/spark
+        - ./gradlew build
+        - ./gradlew check
+    machine:
+      baseImage: docker.apple.com/cpbuild7/applejdk-8
+      env:
+        RUNTIME_JDK_VERSION: applejdk-8
+
+  - branchName: 0.20.4-ase-apple
+    name: openlineage-ase-apple-publish
+    build:
+      template: freestyle:v4:publish
+      steps:
+        - cd ./client/java
+        - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../../integration/spark
+        - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../../
+        #      - ci stage-lib "client/java/build/libs/*"
+        #      - ci stage-lib  "integration/spark/build/libs/*"
+        - mv /root/.m2/repository /workspace/.repo
+        - ls -lsa /workspace/.repo
+        - ls -lsa /workspace/.repo/**
+        - ls -lsa /workspace/.repo/**/**
+        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
+        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
+    machine:
+      baseImage: docker.apple.com/cpbuild7/applejdk-8
+      env:
+        RUNTIME_JDK_VERSION: applejdk-8
+    package:
+      release: true
+      libraries:
+        - publish:
+            - repo: m2:oss-patched
+
