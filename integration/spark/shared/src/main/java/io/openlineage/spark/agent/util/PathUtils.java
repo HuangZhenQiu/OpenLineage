@@ -20,6 +20,8 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.TableIdentifier;
 import org.apache.spark.sql.catalyst.catalog.CatalogTable;
 import org.apache.spark.sql.internal.StaticSQLConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class PathUtils {
@@ -29,7 +31,11 @@ public class PathUtils {
       "spark.openlineage.dataset.removePath.pattern";
   public static final String REMOVE_PATTERN_GROUP = "remove";
 
+  private static final String DATASET_DELIMITTER = ".";
+
   private static Optional<SparkConf> sparkConf = Optional.empty();
+
+  private static final Logger logger = LoggerFactory.getLogger(PathUtils.class);
 
   public static DatasetIdentifier fromPath(Path path) {
     return fromPath(path, DEFAULT_SCHEME);
@@ -79,7 +85,9 @@ public class PathUtils {
     //   Java's Optional should prevent the null in the first place.
     if (metastoreUri.isPresent() && metastoreUri.get() != null) {
       // dealing with Hive tables
-      DatasetIdentifier symlink = prepareHiveDatasetIdentifier(catalogTable, metastoreUri.get());
+      Optional<String> catalogName = extractMetastoreDefaultCatalog(sparkConf);
+      DatasetIdentifier symlink =
+          prepareHiveDatasetIdentifier(catalogTable, metastoreUri.get(), catalogName);
       return di.withSymlink(
           symlink.getName(), symlink.getNamespace(), DatasetIdentifier.SymlinkType.TABLE);
     } else {
@@ -101,8 +109,14 @@ public class PathUtils {
 
   @SneakyThrows
   private static DatasetIdentifier prepareHiveDatasetIdentifier(
-      CatalogTable catalogTable, URI metastoreUri) {
-    String qualifiedName = nameFromTableIdentifier(catalogTable.identifier());
+      CatalogTable catalogTable, URI metastoreUri, Optional<String> catalogName) {
+
+    String qualifiedName =
+        (catalogName.isPresent())
+            ? String.format(
+                "%s%s%s", catalogName.get(), DATASET_DELIMITTER, catalogTable.qualifiedName())
+            : catalogTable.qualifiedName();
+
     if (!qualifiedName.startsWith("/")) {
       qualifiedName = String.format("/%s", qualifiedName);
     }
@@ -142,6 +156,15 @@ public class PathUtils {
     }
 
     return SparkConfUtils.getMetastoreUri(sparkConf.get());
+  }
+
+  private static Optional<String> extractMetastoreDefaultCatalog(Optional<SparkConf> sparkConf) {
+    if (sparkConf.isPresent()) {
+      return SparkConfUtils.getMetastoreDefaultCatalog(sparkConf.get());
+    } else {
+      logger.warn("Cannot identify default catalog as sparkHadoopConfig is not avail");
+      return Optional.empty();
+    }
   }
 
   private static String removeFirstSlashIfSingleSlashInString(String name) {

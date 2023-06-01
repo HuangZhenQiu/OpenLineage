@@ -17,9 +17,18 @@ import scala.Option;
 public class SparkConfUtils {
   private static final String metastoreUriKey = "spark.sql.hive.metastore.uris";
   private static final String metastoreHadoopUriKey = "spark.hadoop.hive.metastore.uris";
+  private static final String metastoreHadoopDefaultKey = "spark.hadoop.metastore.catalog.default";
+
+  public static String findSparkConfigKey(SparkConf conf, String name, String defaultValue) {
+    return findSparkConfigKey(conf, name).orElse(defaultValue);
+  }
 
   public static Optional<String> findSparkConfigKey(SparkConf conf, String name) {
     Option<String> opt = conf.getOption(name);
+    if (opt.isDefined()) {
+      return Optional.of(opt.get());
+    }
+    opt = conf.getOption("spark." + name);
     if (opt.isDefined()) {
       return Optional.of(opt.get());
     }
@@ -46,5 +55,9 @@ public class SparkConfUtils {
                 return null;
               }
             });
+  }
+
+  public static Optional<String> getMetastoreDefaultCatalog(SparkConf conf) {
+    return SparkConfUtils.findSparkConfigKey(conf, metastoreHadoopDefaultKey);
   }
 }

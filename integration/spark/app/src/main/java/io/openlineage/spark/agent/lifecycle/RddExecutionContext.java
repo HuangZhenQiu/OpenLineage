@@ -54,6 +54,8 @@ import org.apache.spark.scheduler.ActiveJob;
 import org.apache.spark.scheduler.JobFailed;
 import org.apache.spark.scheduler.JobResult;
 import org.apache.spark.scheduler.ResultStage;
+import org.apache.spark.scheduler.SparkListenerApplicationEnd;
+import org.apache.spark.scheduler.SparkListenerApplicationStart;
 import org.apache.spark.scheduler.SparkListenerJobEnd;
 import org.apache.spark.scheduler.SparkListenerJobStart;
 import org.apache.spark.scheduler.SparkListenerStageCompleted;
@@ -95,6 +97,12 @@ class RddExecutionContext implements ExecutionContext {
 
   @Override
   public void end(SparkListenerStageCompleted stageCompleted) {}
+
+  @Override
+  public void start(SparkListenerApplicationStart applicationStart) {}
+
+  @Override
+  public void end(SparkListenerApplicationEnd applicationEnd) {}
 
   @Override
   @SuppressWarnings("PMD") //  f.setAccessible(true);

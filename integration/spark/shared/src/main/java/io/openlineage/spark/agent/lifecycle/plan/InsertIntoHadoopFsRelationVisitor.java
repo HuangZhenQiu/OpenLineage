@@ -13,8 +13,12 @@ import io.openlineage.spark.api.QueryPlanVisitor;
 import java.util.Collections;
 import java.util.List;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.sql.execution.datasources.InsertIntoHadoopFsRelationCommand;
+import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link LogicalPlan} visitor that matches an {@link InsertIntoHadoopFsRelationCommand} and
@@ -23,6 +27,9 @@ import org.apache.spark.sql.execution.datasources.InsertIntoHadoopFsRelationComm
 public class InsertIntoHadoopFsRelationVisitor
     extends QueryPlanVisitor<InsertIntoHadoopFsRelationCommand, OpenLineage.OutputDataset> {
 
+  private static final Logger logger =
+      LoggerFactory.getLogger(InsertIntoHadoopFsRelationVisitor.class);
+
   public InsertIntoHadoopFsRelationVisitor(OpenLineageContext context) {
     super(context);
   }
@@ -30,15 +37,24 @@ public class InsertIntoHadoopFsRelationVisitor
   @Override
   public List<OpenLineage.OutputDataset> apply(LogicalPlan x) {
     InsertIntoHadoopFsRelationCommand command = (InsertIntoHadoopFsRelationCommand) x;
-
-    DatasetIdentifier di = PathUtils.fromURI(command.outputPath().toUri(), "file");
     OpenLineage.OutputDataset outputDataset;
+    DatasetIdentifier di;
+    StructType schema;
+    if (command.catalogTable().isDefined()) {
+      CatalogTable catalogTable = command.catalogTable().get();
+      di = PathUtils.fromCatalogTable(catalogTable);
+      schema = catalogTable.schema();
+    } else {
+      di = PathUtils.fromURI(command.outputPath().toUri(), "file");
+      schema = command.query().schema();
+    }
+
     if (SaveMode.Overwrite == command.mode()) {
       outputDataset =
           outputDataset()
               .getDataset(
                   di,
-                  command.query().schema(),
+                  schema,
                   OpenLineage.LifecycleStateChangeDatasetFacet.LifecycleStateChange.OVERWRITE);
     } else {
       outputDataset = outputDataset().getDataset(di, command.query().schema());

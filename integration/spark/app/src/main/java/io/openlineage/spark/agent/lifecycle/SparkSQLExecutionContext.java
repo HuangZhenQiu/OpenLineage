@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.SparkContext;
 import org.apache.spark.scheduler.ActiveJob;
+import org.apache.spark.scheduler.SparkListenerApplicationEnd;
+import org.apache.spark.scheduler.SparkListenerApplicationStart;
 import org.apache.spark.scheduler.SparkListenerJobEnd;
 import org.apache.spark.scheduler.SparkListenerJobStart;
 import org.apache.spark.scheduler.SparkListenerStageCompleted;
@@ -200,6 +202,12 @@ class SparkSQLExecutionContext implements ExecutionContext {
     log.debug("Posting event for end {}: {}", executionId, event);
     eventEmitter.emit(event);
   }
+
+  @Override
+  public void start(SparkListenerApplicationStart applicationStart) {}
+
+  @Override
+  public void end(SparkListenerApplicationEnd applicationEnd) {}
 
   private Optional<OpenLineage.ParentRunFacet> buildParentFacet() {
     return eventEmitter

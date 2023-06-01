@@ -118,6 +118,23 @@ public class LogicalRelationDatasetBuilder<D extends OpenLineage.Dataset>
     datasetFacetsBuilder.dataSource(
         PlanUtils.datasourceFacet(context.getOpenLineage(), di.getNamespace()));
 
+    if (!di.getSymlinks().isEmpty()) {
+      List<OpenLineage.SymlinksDatasetFacetIdentifiers> symlinks =
+          di.getSymlinks().stream()
+              .map(
+                  symlink ->
+                      context
+                          .getOpenLineage()
+                          .newSymlinksDatasetFacetIdentifiersBuilder()
+                          .name(symlink.getName())
+                          .namespace(symlink.getNamespace())
+                          .type(symlink.getType().toString())
+                          .build())
+              .collect(Collectors.toList());
+
+      datasetFacetsBuilder.symlinks(context.getOpenLineage().newSymlinksDatasetFacet(symlinks));
+    }
+
     getDatasetVersion(logRel)
         .map(
             version ->
