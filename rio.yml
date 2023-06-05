@@ -1,8 +1,5 @@
 schemaVersion: 2.0
-  machine:
-    baseImage: docker.apple.com/cpbuild7/applejdk-8
-    env:
-      RUNTIME_JDK_VERSION: applejdk-8
+
 pipelines:
   - branchName: 0.20.4-ase-apple
     name: openlineage-ase-apple-prb
