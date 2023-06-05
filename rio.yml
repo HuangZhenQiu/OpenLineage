@@ -35,12 +35,10 @@ pipelines:
         - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
         - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
     machine:
-      baseImage: docker.apple.com/cpbuild7/applejdk-8
-      env:
-        RUNTIME_JDK_VERSION: applejdk-8
+      baseImage: docker.apple.com/base-images/ubi8/java11-builder
     package:
       release: true
-      libraries:
+      freeform:
         - publish:
             - repo: m2:oss-patched
 
