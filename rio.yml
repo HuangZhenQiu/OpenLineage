@@ -7,7 +7,7 @@ pipelines:
       template: freestyle:v4:prb
       steps:
         - cd ./client/java
-        - ./gradlew --no-daemon publishToMavenLocal
+        - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
         - ./gradlew build
         - ./gradlew check
