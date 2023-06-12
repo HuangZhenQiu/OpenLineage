@@ -9,12 +9,10 @@ pipelines:
         - cd ./client/java
         - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
-        - ./gradlew build --stacktrace --build-cache -x signMavenJavaPublication
+        - ./gradlew clean build --stacktrace --build-cache -x signMavenJavaPublication
         - ./gradlew check
     machine:
-      baseImage: docker.apple.com/cpbuild7/applejdk-8
-      env:
-        RUNTIME_JDK_VERSION: applejdk-8
+      baseImage: docker.apple.com/base-images/ubi8/java11-builder
 
   - branchName: 0.20.4-ase-apple
     name: openlineage-ase-apple-publish
