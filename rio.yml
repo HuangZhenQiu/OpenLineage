@@ -9,7 +9,7 @@ pipelines:
         - cd ./client/java
         - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
-        - ./gradlew build
+        - ./gradlew build --stacktrace --build-cache -x signMavenJavaPublication
         - ./gradlew check
     machine:
       baseImage: docker.apple.com/cpbuild7/applejdk-8
