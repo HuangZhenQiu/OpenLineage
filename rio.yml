@@ -26,14 +26,9 @@ pipelines:
         - cd ../../integration/spark
         - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../
-        #      - ci stage-lib "client/java/build/libs/*"
-        #      - ci stage-lib  "integration/spark/build/libs/*"
         - mv /root/.m2/repository /workspace/.repo
-        - ls -lsa /workspace/.repo
-        - ls -lsa /workspace/.repo/**
         - ls -lsa /workspace/.repo/**/**
-        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
-        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar"
+        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar" --exclude "**/*SNAP*"
     machine:
       baseImage: docker.apple.com/base-images/ubi8/java11-builder
     package:
