@@ -100,11 +100,11 @@ class IcebergHandlerTest {
     assertEquals("TABLE", symlink.getType().toString());
 
     datasetIdentifier =
-            icebergHandler.getDatasetIdentifier(
-                    sparkSession,
-                    sparkCatalog,
-                    Identifier.of(new String[] {"schema"}, "table"),
-                    new HashMap<>());
+        icebergHandler.getDatasetIdentifier(
+            sparkSession,
+            sparkCatalog,
+            Identifier.of(new String[] {"schema"}, "table"),
+            new HashMap<>());
 
     symlink = datasetIdentifier.getSymlinks().get(0);
     assertEquals("/tmp/warehouse/schema.table", datasetIdentifier.getName());

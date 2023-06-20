@@ -10,7 +10,6 @@ pipelines:
         - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
         - ./gradlew clean build --stacktrace --build-cache -x signMavenJavaPublication
-        - ./gradlew check
     machine:
       baseImage: docker.apple.com/base-images/ubi8/java11-builder
 

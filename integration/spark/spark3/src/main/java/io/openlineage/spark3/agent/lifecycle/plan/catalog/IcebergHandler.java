@@ -15,6 +15,7 @@ import java.io.File;
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import lombok.SneakyThrows;
@@ -38,6 +39,8 @@ public class IcebergHandler implements CatalogHandler {
   private static final String TYPE = "type";
 
   private static final String DATASET_DELIMITTER = ".";
+
+  private static final Pattern datasetPattern = Pattern.compile("(\\w*)\\.(\\w*)\\.(\\w*)");
 
   public IcebergHandler(OpenLineageContext context) {
     this.context = context;
@@ -123,7 +126,11 @@ public class IcebergHandler implements CatalogHandler {
   @SneakyThrows
   private DatasetIdentifier.Symlink getHiveIdentifier(
       SparkSession session, @Nullable String confUri, String table, String catalogName) {
-    String qualifiedName = catalogName != null && table.split("\\" + DATASET_DELIMITTER).length < 3 ? catalogName + DATASET_DELIMITTER + table : table;
+    boolean catalogNamingFormat = datasetPattern.matcher(table).matches();
+    String qualifiedName =
+        catalogName != null && !catalogNamingFormat
+            ? catalogName + DATASET_DELIMITTER + table
+            : table;
 
     String slashPrefixedTable = String.format("/%s", qualifiedName);
     URI uri;
