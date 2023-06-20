@@ -37,6 +37,8 @@ public class IcebergHandler implements CatalogHandler {
 
   private static final String TYPE = "type";
 
+  private static final String DATASET_DELIMITTER = ".";
+
   public IcebergHandler(OpenLineageContext context) {
     this.context = context;
   }
@@ -90,7 +92,7 @@ public class IcebergHandler implements CatalogHandler {
     if (catalogConf.get(TYPE).equals("hive")) {
       di.withSymlink(
           getHiveIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+              session, catalogConf.get(CatalogProperties.URI), identifier.toString(), catalogName));
     } else if (catalogConf.get(TYPE).equals("hadoop")) {
       di.withSymlink(
           identifier.toString(),
@@ -120,8 +122,10 @@ public class IcebergHandler implements CatalogHandler {
 
   @SneakyThrows
   private DatasetIdentifier.Symlink getHiveIdentifier(
-      SparkSession session, @Nullable String confUri, String table) {
-    String slashPrefixedTable = String.format("/%s", table);
+      SparkSession session, @Nullable String confUri, String table, String catalogName) {
+    String qualifiedName = catalogName != null && table.split("\\" + DATASET_DELIMITTER).length < 3 ? catalogName + DATASET_DELIMITTER + table : table;
+
+    String slashPrefixedTable = String.format("/%s", qualifiedName);
     URI uri;
     if (confUri == null) {
       uri =

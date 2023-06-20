@@ -98,6 +98,20 @@ class IcebergHandlerTest {
     assertEquals("database.schema.table", symlink.getName());
     assertEquals("hive://metastore-host:10001", symlink.getNamespace());
     assertEquals("TABLE", symlink.getType().toString());
+
+    datasetIdentifier =
+            icebergHandler.getDatasetIdentifier(
+                    sparkSession,
+                    sparkCatalog,
+                    Identifier.of(new String[] {"schema"}, "table"),
+                    new HashMap<>());
+
+    symlink = datasetIdentifier.getSymlinks().get(0);
+    assertEquals("/tmp/warehouse/schema.table", datasetIdentifier.getName());
+    assertEquals("file", datasetIdentifier.getNamespace());
+    assertEquals("test.schema.table", symlink.getName());
+    assertEquals("hive://metastore-host:10001", symlink.getNamespace());
+    assertEquals("TABLE", symlink.getType().toString());
   }
 
   @Test
