@@ -38,6 +38,8 @@ public class IcebergHandler implements CatalogHandler {
 
   private static final String TYPE = "type";
 
+  private static final String HIVE_CATALOG = "hive_catalog";
+
   private static final String DATASET_DELIMITTER = ".";
 
   private static final Pattern datasetPattern = Pattern.compile("(\\w*)\\.(\\w*)\\.(\\w*)");
@@ -95,7 +97,10 @@ public class IcebergHandler implements CatalogHandler {
     if (catalogConf.get(TYPE).equals("hive")) {
       di.withSymlink(
           getHiveIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString(), catalogName));
+              session,
+              catalogConf.get(CatalogProperties.URI),
+              identifier.toString(),
+              Optional.ofNullable(catalogConf.get(HIVE_CATALOG))));
     } else if (catalogConf.get(TYPE).equals("hadoop")) {
       di.withSymlink(
           identifier.toString(),
@@ -125,7 +130,15 @@ public class IcebergHandler implements CatalogHandler {
 
   @SneakyThrows
   private DatasetIdentifier.Symlink getHiveIdentifier(
-      SparkSession session, @Nullable String confUri, String table, String catalogName) {
+      SparkSession session,
+      @Nullable String confUri,
+      String table,
+      Optional<String> hiveCatalogName) {
+
+    String catalogName =
+        hiveCatalogName.orElse(
+            SparkConfUtils.getMetastoreDefaultCatalog(session.sparkContext().conf()).orElse(null));
+
     boolean catalogNamingFormat = datasetPattern.matcher(table).matches();
     String qualifiedName =
         catalogName != null && !catalogNamingFormat
