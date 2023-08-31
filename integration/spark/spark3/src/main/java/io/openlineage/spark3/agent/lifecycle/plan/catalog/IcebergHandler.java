@@ -95,28 +95,55 @@ public class IcebergHandler implements CatalogHandler {
     DatasetIdentifier di = PathUtils.fromPath(new Path(warehouse, identifier.toString()));
 
     if (catalogConf.get(TYPE).equals("hive")) {
-      di.withSymlink(
-          getHiveIdentifier(
+        di =
+          getHiveDatasetIdentifier(
+              catalogConf,
+              identifier,
               session,
               catalogConf.get(CatalogProperties.URI),
               identifier.toString(),
               Optional.ofNullable(catalogConf.get(HIVE_CATALOG))));
     } else if (catalogConf.get(TYPE).equals("hadoop")) {
-      di.withSymlink(
-          identifier.toString(),
-          StringUtils.substringBeforeLast(
-              di.getName(), File.separator), // parent location from a name becomes a namespace
-          DatasetIdentifier.SymlinkType.TABLE);
+        di.withSymlink(
+                identifier.toString(),
+                StringUtils.substringBeforeLast(
+                        di.getName(), File.separator), // parent location from a name becomes a namespace
+                DatasetIdentifier.SymlinkType.TABLE);
     } else if (catalogConf.get(TYPE).equals("rest")) {
-      di.withSymlink(
-          getRestIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+        di.withSymlink(
+                getRestIdentifier(
+                        session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
     } else if (catalogConf.get(TYPE).equals("nessie")) {
-      di.withSymlink(
-          getNessieIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+        di.withSymlink(
+                getNessieIdentifier(
+                        session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
     }
+  }
 
+  @SneakyThrows
+  private DatasetIdentifier getHiveDatasetIdentifier(
+      Map<String, String> catalogConf,
+      Identifier identifier,
+      SparkSession session,
+      @Nullable String confUri,
+      Optional<String> hiveCatalogName) {
+    String icerbergCatalogLocation = catalogConf.get(CatalogProperties.WAREHOUSE_LOCATION);
+
+    String defaultWarehouseLocation =
+        SparkConfUtils.getMetastoreWarehouseURI(session.sparkContext().conf())
+            .orElse(new URI("file:/tmp/warehouse"))
+            .getPath();
+
+    String warehouseLocation =
+        Optional.ofNullable(icerbergCatalogLocation).orElse(defaultWarehouseLocation);
+
+    log.info(
+        "For Hive dataset identifier={}, warehouseLocation={}",
+        identifier.toString(),
+        warehouseLocation);
+    DatasetIdentifier di = PathUtils.fromPath(new Path(warehouseLocation, identifier.toString()));
+
+    di.withSymlink(getHiveIdentifier(session, confUri, identifier.toString(), hiveCatalogName));
     return di;
   }
 

@@ -18,6 +18,9 @@ public class SparkConfUtils {
   private static final String metastoreUriKey = "spark.sql.hive.metastore.uris";
   private static final String metastoreHadoopUriKey = "spark.hadoop.hive.metastore.uris";
   private static final String metastoreHadoopDefaultKey = "spark.hadoop.metastore.catalog.default";
+  private static final String metastoreWarehouseDirKey = "spark.sql.warehouse.dir";
+  private static final String metastoreHadoopWarehouseDirKey =
+      "spark.hadoop.hive.metastore.warehouse.dir";
 
   public static String findSparkConfigKey(SparkConf conf, String name, String defaultValue) {
     return findSparkConfigKey(conf, name).orElse(defaultValue);
@@ -59,5 +62,29 @@ public class SparkConfUtils {
 
   public static Optional<String> getMetastoreDefaultCatalog(SparkConf conf) {
     return SparkConfUtils.findSparkConfigKey(conf, metastoreHadoopDefaultKey);
+  }
+
+  public static Optional<URI> getMetastoreWarehouseURI(SparkConf conf) {
+    log.info("In Spark Config Utils " + conf.toDebugString());
+    return Optional.ofNullable(
+            SparkConfUtils.findSparkConfigKey(conf, metastoreWarehouseDirKey)
+                .orElse(
+                    SparkConfUtils.findSparkConfigKey(conf, metastoreHadoopWarehouseDirKey)
+                        .orElse(null)))
+        .map(
+            key -> {
+              if (key.contains(",")) {
+                return Arrays.stream(key.split(",")).findFirst().get();
+              }
+              return key;
+            })
+        .map(
+            uri -> {
+              try {
+                return new URI(uri);
+              } catch (URISyntaxException e) {
+                return null;
+              }
+            });
   }
 }

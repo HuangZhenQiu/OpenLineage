@@ -14,6 +14,8 @@ import static org.mockito.Mockito.when;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.utils.DatasetIdentifier;
 import io.openlineage.spark.agent.Versions;
+import io.openlineage.spark.agent.util.DatasetIdentifier;
+import io.openlineage.spark.agent.util.ScalaConversionUtils;
 import io.openlineage.spark.api.OpenLineageContext;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,20 +81,24 @@ class IcebergHandlerTest {
     sparkConf.set("spark.sql.catalogImplementation", "hive");
     sparkConf.set("spark.sql.hive.metastore.uris", "thrift://metastore-host:10001");
     sparkConf.set("spark.hadoop.metastore.catalog.default", "default_catalog");
-    when(sparkContext.conf()).thenReturn(sparkConf);
+
+    Map.Map4<String, String> config =
+        new Map.Map4<>(
+            "spark.sql.catalog.test.type",
+            "hive",
+            "spark.sql.catalog.test.hive_catalog",
+            "catalog_name",
+            "spark.sql.catalog.test.uri",
+            "thrift://metastore-host:10001",
+            "spark.sql.catalog.test.warehouse",
+            "/tmp/warehouse");
+
+    java.util.Map configMap = ScalaConversionUtils.fromMap(config);
+    configMap.forEach((k, v) -> sparkConf.set(k.toString(), v.toString()));
     when(sparkSession.sparkContext()).thenReturn(sparkContext);
+    when(sparkContext.conf()).thenReturn(sparkConf);
     when(sparkSession.conf()).thenReturn(runtimeConfig);
-    when(runtimeConfig.getAll())
-        .thenReturn(
-            new Map.Map4<>(
-                "spark.sql.catalog.test.type",
-                "hive",
-                "spark.sql.catalog.test.hive_catalog",
-                "catalog_name",
-                "spark.sql.catalog.test.uri",
-                "thrift://metastore-host:10001",
-                "spark.sql.catalog.test.warehouse",
-                "/tmp/warehouse"));
+    when(runtimeConfig.getAll()).thenReturn(config);
     SparkCatalog sparkCatalog = mock(SparkCatalog.class);
     when(sparkCatalog.name()).thenReturn("test");
 
@@ -126,15 +132,13 @@ class IcebergHandlerTest {
 
     when(runtimeConfig.getAll())
         .thenReturn(
-            new Map.Map4<>(
+            new Map.Map3<>(
                 "spark.sql.catalog.test.type",
                 "hive",
                 "spark.hadoop.metastore.catalog.default",
                 "default_catalog",
                 "spark.sql.catalog.test.uri",
-                "thrift://metastore-host:10001",
-                "spark.sql.catalog.test.warehouse",
-                "/tmp/warehouse"));
+                "thrift://metastore-host:10001"));
 
     datasetIdentifier =
         icebergHandler.getDatasetIdentifier(
@@ -147,6 +151,35 @@ class IcebergHandlerTest {
     assertEquals("/tmp/warehouse/schema.table", datasetIdentifier.getName());
     assertEquals("file", datasetIdentifier.getNamespace());
     assertEquals("default_catalog.schema.table", symlink.getName());
+    assertEquals("hive://metastore-host:10001", symlink.getNamespace());
+    assertEquals("TABLE", symlink.getType().toString());
+
+    HashMap<String, String> configMapWithHadoopWarehouseDir = new HashMap<>(configMap);
+    configMapWithHadoopWarehouseDir.put(
+        "spark.hadoop.hive.metastore.warehouse.dir", "/user/hive/warehouse/");
+    configMapWithHadoopWarehouseDir.forEach((k, v) -> sparkConf.set(k, v));
+
+    when(runtimeConfig.getAll())
+        .thenReturn(
+            new Map.Map3<String, String>(
+                "spark.sql.catalog.test.type",
+                "hive",
+                "spark.sql.catalog.test.hive_catalog",
+                "catalog_name",
+                "spark.sql.catalog.test.uri",
+                "thrift://metastore-host:10001"));
+
+    datasetIdentifier =
+        icebergHandler.getDatasetIdentifier(
+            sparkSession,
+            sparkCatalog,
+            Identifier.of(new String[] {"schema"}, "table"),
+            new HashMap<>());
+
+    symlink = datasetIdentifier.getSymlinks().get(0);
+    assertEquals("/user/hive/warehouse/schema.table", datasetIdentifier.getName());
+    assertEquals("file", datasetIdentifier.getNamespace());
+    assertEquals("catalog_name.schema.table", symlink.getName());
     assertEquals("hive://metastore-host:10001", symlink.getNamespace());
     assertEquals("TABLE", symlink.getType().toString());
   }
