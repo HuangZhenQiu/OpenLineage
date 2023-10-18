@@ -1,8 +1,8 @@
 schemaVersion: 2.0
 
 pipelines:
-  - branchName: 0.20.4-ase-apple
-    name: openlineage-ase-apple-prb
+  - branchName: 1.4.1-ase-uc-lineage
+    name: openlineage-ase-uc-lineage-prb
     build:
       template: freestyle:v4:prb
       steps:
@@ -13,8 +13,8 @@ pipelines:
     machine:
       baseImage: docker.apple.com/base-images/ubi8/java11-builder
 
-  - branchName: 0.20.4-ase-apple
-    name: openlineage-ase-apple-publish
+  - branchName: 1.4.1-ase-uc-lineage
+    name: openlineage-ase-uc-lineage-publish
     build:
       template: freestyle:v4:publish
       steps:
