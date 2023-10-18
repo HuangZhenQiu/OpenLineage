@@ -101,8 +101,7 @@ public class IcebergHandler implements CatalogHandler {
               identifier,
               session,
               catalogConf.get(CatalogProperties.URI),
-              identifier.toString(),
-              Optional.ofNullable(catalogConf.get(HIVE_CATALOG))));
+              Optional.ofNullable(catalogConf.get(HIVE_CATALOG)));
     } else if (catalogConf.get(TYPE).equals("hadoop")) {
         di.withSymlink(
                 identifier.toString(),
@@ -118,6 +117,7 @@ public class IcebergHandler implements CatalogHandler {
                 getNessieIdentifier(
                         session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
     }
+    return di;
   }
 
   @SneakyThrows
