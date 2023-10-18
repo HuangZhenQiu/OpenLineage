@@ -130,30 +130,32 @@ class PathUtilsTest {
   void testFromCatalogTableWithStorage() throws URISyntaxException {
     sparkConf.set("spark.sql.catalogImplementation", "hive");
     sparkConf.set("spark.sql.hive.metastore.uris", "thrift://10.1.0.1:9083");
+    sparkConf.set("spark.hadoop.metastore.catalog.default", "default");
     when(sparkContext.getConf()).thenReturn(sparkConf);
     when(sparkSession.sparkContext()).thenReturn(sparkContext);
 
     when(catalogTable.storage()).thenReturn(catalogStorageFormat);
     when(catalogTable.identifier()).thenReturn(TableIdentifier.apply(TABLE));
+    when(catalogTable.qualifiedName()).thenReturn(TABLE);
     when(catalogStorageFormat.locationUri()).thenReturn(Option.apply(new URI("/tmp/warehouse")));
 
     DatasetIdentifier di = PathUtils.fromCatalogTable(catalogTable, Optional.of(sparkConf));
     assertThat(di.getName()).isEqualTo("/tmp/warehouse");
     assertThat(di.getNamespace()).isEqualTo("file");
     assertThat(di.getSymlinks()).hasSize(1);
-    assertThat(di.getSymlinks().get(0).getName()).isEqualTo(TABLE);
+    assertThat(di.getSymlinks().get(0).getName()).isEqualTo("default." + TABLE);
     assertThat(di.getSymlinks().get(0).getNamespace()).isEqualTo("hive://10.1.0.1:9083");
 
     sparkConf.set(
         "spark.sql.hive.metastore.uris", "anotherprotocol://127.0.0.1:1010,yetanother://something");
     di = PathUtils.fromCatalogTable(catalogTable, Optional.of(sparkConf));
-    assertThat(di.getSymlinks().get(0).getName()).isEqualTo(TABLE);
+    assertThat(di.getSymlinks().get(0).getName()).isEqualTo("default." + TABLE);
     assertThat(di.getSymlinks().get(0).getNamespace()).isEqualTo("hive://127.0.0.1:1010");
 
     sparkConf.remove("spark.sql.hive.metastore.uris");
     sparkConf.set("spark.hadoop.hive.metastore.uris", "thrift://10.1.0.1:9083");
     di = PathUtils.fromCatalogTable(catalogTable, Optional.of(sparkConf));
-    assertThat(di.getSymlinks().get(0).getName()).isEqualTo(TABLE);
+    assertThat(di.getSymlinks().get(0).getName()).isEqualTo("default." + TABLE);
     assertThat(di.getSymlinks().get(0).getNamespace()).isEqualTo("hive://10.1.0.1:9083");
   }
 
@@ -273,6 +275,8 @@ class PathUtilsTest {
 
         when(sessionCatalog.defaultTablePath(tableIdentifier)).thenReturn(tableUri);
         when(catalogTable.identifier()).thenReturn(tableIdentifier);
+        when(catalogTable.qualifiedName())
+            .thenReturn(tableIdentifier.database().get() + "." + tableIdentifier.table());
 
         DatasetIdentifier datasetIdentifier =
             PathUtils.fromCatalogTable(catalogTable, Optional.of(sparkConf));
@@ -298,6 +302,7 @@ class PathUtilsTest {
       SparkConf sparkConf = new SparkConf();
       sparkConf.set("spark.sql.hive.metastore.uris", "thrift://127.0.0.1:9876");
       sparkConf.set("spark.sql.catalogImplementation", "hive");
+      sparkConf.set("spark.hadoop.metastore.catalog.default", "default");
       URI tableUri = URI.create("hdfs://namenode/user/hive/warehouse/foo.db/bar");
       new FromCatalogTableShouldReturnTheCorrectScheme(
               sparkConf,
@@ -307,7 +312,7 @@ class PathUtilsTest {
               "hdfs://namenode",
               tableUri.getPath(),
               "hive://127.0.0.1:9876",
-              "foo.bar")
+              "default.foo.bar")
           .performTest();
     }
   }

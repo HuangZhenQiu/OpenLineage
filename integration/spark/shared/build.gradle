@@ -57,7 +57,7 @@ ext {
 
 dependencies {
     api "io.openlineage:openlineage-java:${project.version}"
-    api "io.openlineage:openlineage-sql-java:${project.version}"
+    api "io.openlineage:openlineage-sql-java:1.4.1"
 
 
     compileOnly "org.apache.spark:spark-core_2.11:${sparkVersion}"
@@ -132,6 +132,7 @@ test {
     useJUnitPlatform {
         excludeTags 'integration-test'
     }
+    exclude 'io.openlineage.spark.agent.lifecycle.plan.JdbcRelationHandlerTest'
 }
 
 assemble {

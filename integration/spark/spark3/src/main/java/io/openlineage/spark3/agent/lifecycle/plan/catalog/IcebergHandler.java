@@ -95,7 +95,7 @@ public class IcebergHandler implements CatalogHandler {
     DatasetIdentifier di = PathUtils.fromPath(new Path(warehouse, identifier.toString()));
 
     if (catalogConf.get(TYPE).equals("hive")) {
-        di =
+      di =
           getHiveDatasetIdentifier(
               catalogConf,
               identifier,
@@ -103,19 +103,19 @@ public class IcebergHandler implements CatalogHandler {
               catalogConf.get(CatalogProperties.URI),
               Optional.ofNullable(catalogConf.get(HIVE_CATALOG)));
     } else if (catalogConf.get(TYPE).equals("hadoop")) {
-        di.withSymlink(
-                identifier.toString(),
-                StringUtils.substringBeforeLast(
-                        di.getName(), File.separator), // parent location from a name becomes a namespace
-                DatasetIdentifier.SymlinkType.TABLE);
+      di.withSymlink(
+          identifier.toString(),
+          StringUtils.substringBeforeLast(
+              di.getName(), File.separator), // parent location from a name becomes a namespace
+          DatasetIdentifier.SymlinkType.TABLE);
     } else if (catalogConf.get(TYPE).equals("rest")) {
-        di.withSymlink(
-                getRestIdentifier(
-                        session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+      di.withSymlink(
+          getRestIdentifier(
+              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
     } else if (catalogConf.get(TYPE).equals("nessie")) {
-        di.withSymlink(
-                getNessieIdentifier(
-                        session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+      di.withSymlink(
+          getNessieIdentifier(
+              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
     }
     return di;
   }
