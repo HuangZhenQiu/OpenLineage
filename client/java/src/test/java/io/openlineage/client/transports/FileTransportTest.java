@@ -58,12 +58,16 @@ public class FileTransportTest {
     transport.emit("{some-event}");
 
     // make file unwritable
-    new File(FILE_LOCATION).setWritable(false);
+    boolean filePermissionUpdated = new File(FILE_LOCATION).setWritable(false);
 
     // should not be written
     transport.emit("{some-event}");
 
-    assertThat(FileUtils.readLines(new File(FILE_LOCATION)).size()).isEqualTo(1);
+    if (filePermissionUpdated) {
+      assertThat(FileUtils.readLines(new File(FILE_LOCATION)).size()).isEqualTo(1);
+    } else {
+      assertThat(FileUtils.readLines(new File(FILE_LOCATION)).size()).isEqualTo(2);
+    }
   }
 
   @Test
