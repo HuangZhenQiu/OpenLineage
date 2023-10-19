@@ -90,34 +90,34 @@ public class IcebergHandler implements CatalogHandler {
       throw new UnsupportedCatalogException(catalogName);
     }
     log.info(catalogConf.get(TYPE));
-
-    String warehouse = catalogConf.get(CatalogProperties.WAREHOUSE_LOCATION);
-    DatasetIdentifier di = PathUtils.fromPath(new Path(warehouse, identifier.toString()));
-
     if (catalogConf.get(TYPE).equals("hive")) {
-      di =
-          getHiveDatasetIdentifier(
-              catalogConf,
-              identifier,
-              session,
-              catalogConf.get(CatalogProperties.URI),
-              Optional.ofNullable(catalogConf.get(HIVE_CATALOG)));
-    } else if (catalogConf.get(TYPE).equals("hadoop")) {
-      di.withSymlink(
-          identifier.toString(),
-          StringUtils.substringBeforeLast(
-              di.getName(), File.separator), // parent location from a name becomes a namespace
-          DatasetIdentifier.SymlinkType.TABLE);
-    } else if (catalogConf.get(TYPE).equals("rest")) {
-      di.withSymlink(
-          getRestIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
-    } else if (catalogConf.get(TYPE).equals("nessie")) {
-      di.withSymlink(
-          getNessieIdentifier(
-              session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+      return getHiveDatasetIdentifier(
+          catalogConf,
+          identifier,
+          session,
+          catalogConf.get(CatalogProperties.URI),
+          Optional.ofNullable(catalogConf.get(HIVE_CATALOG)));
+    } else {
+      String warehouse = catalogConf.get(CatalogProperties.WAREHOUSE_LOCATION);
+      final DatasetIdentifier di = PathUtils.fromPath(new Path(warehouse, identifier.toString()));
+      if (catalogConf.get(TYPE).equals("hadoop")) {
+        return di.withSymlink(
+            identifier.toString(),
+            StringUtils.substringBeforeLast(
+                di.getName(), File.separator), // parent location from a name becomes a namespace
+            DatasetIdentifier.SymlinkType.TABLE);
+      } else if (catalogConf.get(TYPE).equals("rest")) {
+        return di.withSymlink(
+            getRestIdentifier(
+                session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+      } else if (catalogConf.get(TYPE).equals("nessie")) {
+        return di.withSymlink(
+            getNessieIdentifier(
+                session, catalogConf.get(CatalogProperties.URI), identifier.toString()));
+      } else {
+        return di;
+      }
     }
-    return di;
   }
 
   @SneakyThrows
