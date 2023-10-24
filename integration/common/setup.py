@@ -10,7 +10,7 @@ from setuptools import find_namespace_packages, setup
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
-__version__ = "1.4.1-1-ase-apple"
+__version__ = "1.4.1-2-ase-apple"
 
 
 project_urls = {

@@ -10,7 +10,7 @@ from setuptools import setup
 with open("README.md") as readme_file:
      readme = readme_file.read()
 
-__version__ = "1.4.1-1-ase-apple"
+__version__ = "1.4.1-2-ase-apple"
 
 requirements = [
     "tqdm>=4.62.0",
