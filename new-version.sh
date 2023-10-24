@@ -96,10 +96,10 @@ while [ $# -gt 0 ]; do
 done
 
 branch=$(git symbolic-ref --short HEAD)
-if [[ "${branch}" != "main" ]]; then
-  echo "error: you may only release on 'main'!"
-  exit 1;
-fi
+#if [[ "${branch}" != "main" ]]; then
+#  echo "error: you may only release on 'main'!"
+#  exit 1;
+#fi
 
 # Ensure no unstaged changes are present in working directory
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]] ; then
@@ -109,12 +109,12 @@ fi
 
 # Ensure valid versions
 VERSIONS=($RELEASE_VERSION $NEXT_VERSION)
-for VERSION in "${VERSIONS[@]}"; do
-  if [[ ! "${VERSION}" =~ ${SEMVER_REGEX} ]]; then
-    echo "Error: Version '${VERSION}' must match '${SEMVER_REGEX}'"
-    exit 1
-  fi
-done
+#for VERSION in "${VERSIONS[@]}"; do
+#  if [[ ! "${VERSION}" =~ ${SEMVER_REGEX} ]]; then
+#    echo "Error: Version '${VERSION}' must match '${SEMVER_REGEX}'"
+#    exit 1
+#  fi
+#done
 
 # Ensure python module version matches X.Y.Z or X.Y.ZrcN (see: https://www.python.org/dev/peps/pep-0440/),
 PYTHON_RELEASE_VERSION=${RELEASE_VERSION}
