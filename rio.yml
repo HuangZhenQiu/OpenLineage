@@ -10,6 +10,8 @@ pipelines:
         - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
         - ./gradlew clean build --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../flink
+        - ./gradlew clean build --stacktrace --build-cache -x signMavenJavaPublication
     machine:
       baseImage: docker.apple.com/base-images/ubi8/java11-builder
 
@@ -21,6 +23,8 @@ pipelines:
         - cd ./client/java
         - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../integration/spark
+        - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../flink
         - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
         - cd ../../
         - mv /root/.m2/repository /workspace/.repo
