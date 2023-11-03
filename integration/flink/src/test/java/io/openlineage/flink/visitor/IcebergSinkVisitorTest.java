@@ -16,6 +16,7 @@ import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineage.OutputDataset;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.client.EventEmitter;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.IcebergSinkWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +26,7 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.transformations.OneInputTransformation;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.types.Types;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -57,10 +59,12 @@ class IcebergSinkVisitorTest {
     try (MockedStatic<IcebergSinkWrapper> mockedStatic = mockStatic(IcebergSinkWrapper.class)) {
       when(IcebergSinkWrapper.of(icebergFilesCommitter)).thenReturn(wrapper);
       when(table.location()).thenReturn("s3://bucket/table/");
+      when(table.name()).thenReturn("hive.test.table");
       when(table.schema().columns())
           .thenReturn(
               Collections.singletonList(Types.NestedField.of(1, false, "a", Types.LongType.get())));
       when(wrapper.getTable()).thenReturn(Optional.of(table));
+      when(wrapper.getNamespace()).thenReturn(Optional.of("thrift://localhost:9083"));
 
       List<OutputDataset> outputDatasets = sinkVisitor.apply(sink);
       List<OpenLineage.SchemaDatasetFacetFields> fields =
@@ -73,6 +77,16 @@ class IcebergSinkVisitorTest {
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
       assertEquals("LONG", fields.get(0).getType());
+
+      List<OpenLineage.SymlinksDatasetFacetIdentifiers> symlinkIdentifiers =
+          outputDatasets.get(0).getFacets().getSymlinks().getIdentifiers();
+      Assertions.assertEquals(1, symlinkIdentifiers.size());
+
+      OpenLineage.SymlinksDatasetFacetIdentifiers symlinkIdentifier =
+          outputDatasets.get(0).getFacets().getSymlinks().getIdentifiers().get(0);
+      Assertions.assertEquals(Constants.TABLE_TYPE, symlinkIdentifier.getType());
+      Assertions.assertEquals("hive.test.table", symlinkIdentifier.getName());
+      Assertions.assertEquals("thrift://localhost:9083", symlinkIdentifier.getNamespace());
     }
   }
 }

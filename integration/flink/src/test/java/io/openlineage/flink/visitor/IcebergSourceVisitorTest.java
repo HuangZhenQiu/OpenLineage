@@ -17,9 +17,11 @@ import static org.mockito.Mockito.when;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.client.EventEmitter;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.IcebergSourceWrapper;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.apache.iceberg.Table;
@@ -76,7 +78,9 @@ class IcebergSourceVisitorTest {
       when(table.schema().columns())
           .thenReturn(
               Collections.singletonList(Types.NestedField.of(1, false, "a", Types.LongType.get())));
+      when(table.name()).thenReturn("hive.test.table");
       when(wrapper.getTable()).thenReturn(table);
+      when(wrapper.getNamespace()).thenReturn(Optional.of("thrift://localhost:9083"));
 
       List<OpenLineage.InputDataset> inputDatasets = icebergSourceVisitor.apply(sourceObject);
       List<OpenLineage.SchemaDatasetFacetFields> fields =
@@ -89,6 +93,16 @@ class IcebergSourceVisitorTest {
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
       assertEquals("LONG", fields.get(0).getType());
+
+      List<OpenLineage.SymlinksDatasetFacetIdentifiers> symlinkIdentifiers =
+          inputDatasets.get(0).getFacets().getSymlinks().getIdentifiers();
+      assertEquals(1, symlinkIdentifiers.size());
+
+      OpenLineage.SymlinksDatasetFacetIdentifiers symlinkIdentifier =
+          inputDatasets.get(0).getFacets().getSymlinks().getIdentifiers().get(0);
+      assertEquals(Constants.TABLE_TYPE, symlinkIdentifier.getType());
+      assertEquals("hive.test.table", symlinkIdentifier.getName());
+      assertEquals("thrift://localhost:9083", symlinkIdentifier.getNamespace());
     }
   }
 

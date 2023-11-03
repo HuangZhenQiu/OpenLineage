@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.KafkaSinkWrapper;
 import java.net.URI;
 import java.util.List;
@@ -79,6 +80,16 @@ class KafkaSinkVisitorTest {
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
       assertEquals("long", fields.get(0).getType());
+
+      List<OpenLineage.SymlinksDatasetFacetIdentifiers> symlinkIdentifiers =
+          outputDataset.getFacets().getSymlinks().getIdentifiers();
+      assertEquals(1, symlinkIdentifiers.size());
+
+      OpenLineage.SymlinksDatasetFacetIdentifiers symlinkIdentifier =
+          outputDataset.getFacets().getSymlinks().getIdentifiers().get(0);
+      assertEquals(Constants.KAFKA_TYPE, symlinkIdentifier.getType());
+      assertEquals("topic", symlinkIdentifier.getName());
+      assertEquals("server1;server2", symlinkIdentifier.getNamespace());
     }
   }
 

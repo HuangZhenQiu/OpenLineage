@@ -6,13 +6,14 @@
 package io.openlineage.flink.visitor;
 
 import io.openlineage.client.OpenLineage;
-import io.openlineage.client.utils.DatasetIdentifier;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
-import io.openlineage.flink.utils.KafkaUtils;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.FlinkKafkaConsumerWrapper;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -34,25 +35,32 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
   public List<OpenLineage.InputDataset> apply(Object object) {
     try {
       FlinkKafkaConsumerWrapper wrapper = FlinkKafkaConsumerWrapper.of((FlinkKafkaConsumer) object);
-
+      Properties properties = wrapper.getKafkaProperties();
+      String bootstrapServers = properties.getProperty("bootstrap.servers");
       OpenLineage openLineage = context.getOpenLineage();
+
       return wrapper.getTopics().stream()
           .map(
               topic -> {
-                DatasetIdentifier di =
-                    KafkaUtils.datasetIdentifierOf(wrapper.getKafkaProperties(), topic);
+                OpenLineage.InputDatasetBuilder builder =
+                    openLineage.newInputDatasetBuilder().namespace(bootstrapServers).name(topic);
 
-                OpenLineage.DatasetFacetsBuilder datasetFacetsBuilder =
+                OpenLineage.DatasetFacetsBuilder facetsBuilder =
                     inputDataset().getDatasetFacetsBuilder();
+
+                OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+                    CommonUtils.createSymlinkFacet(
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
 
                 wrapper
                     .getAvroSchema()
                     .ifPresent(
                         schema ->
-                            datasetFacetsBuilder.schema(
-                                AvroSchemaUtils.convert(openLineage, schema)));
+                            facetsBuilder
+                                .schema(AvroSchemaUtils.convert(openLineage, schema))
+                                .symlinks(symlinksDatasetFacet));
 
-                return inputDataset().getDataset(di, datasetFacetsBuilder);
+                return builder.facets(facetsBuilder.build()).build();
               })
           .collect(Collectors.toList());
     } catch (IllegalAccessException e) {

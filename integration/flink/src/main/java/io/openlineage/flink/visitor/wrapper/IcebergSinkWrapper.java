@@ -5,6 +5,7 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import io.openlineage.flink.utils.IcebergUtils;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.iceberg.Table;
@@ -25,19 +26,24 @@ public class IcebergSinkWrapper {
   }
 
   public Optional<Table> getTable() {
+    Optional<TableLoader> tableLoaderOpt = getTableLoader();
+    return tableLoaderOpt.map(TableLoader::loadTable);
+  }
+
+  public Optional<String> getNamespace() {
+    Optional<TableLoader> tableLoaderOpt = getTableLoader();
+    return IcebergUtils.getNamespace(tableLoaderOpt);
+  }
+
+  private Optional<TableLoader> getTableLoader() {
     Class icebergFilesCommiterClass = null;
     try {
       icebergFilesCommiterClass =
           Class.forName("org.apache.iceberg.flink.sink.IcebergFilesCommitter");
       return WrapperUtils.<TableLoader>getFieldValue(
-              icebergFilesCommiterClass, icebergFilesCommitter, "tableLoader")
-          .map(
-              loader -> {
-                loader.open();
-                return loader.loadTable();
-              });
-    } catch (ClassNotFoundException | NullPointerException e) {
-      log.warn("Failed extracting table from IcebergFilesCommitter", e);
+          icebergFilesCommiterClass, icebergFilesCommitter, "tableLoader");
+    } catch (ClassNotFoundException e) {
+      log.warn("Failed extracting table loader from IcebergFilesCommitter", e);
     }
 
     return Optional.empty();

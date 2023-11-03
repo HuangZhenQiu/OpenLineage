@@ -6,10 +6,10 @@
 package io.openlineage.flink.visitor;
 
 import io.openlineage.client.OpenLineage;
-import io.openlineage.client.utils.DatasetIdentifier;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
-import io.openlineage.flink.utils.KafkaUtils;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.KafkaSourceWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -42,10 +42,14 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
       return topics.stream()
           .map(
               topic -> {
-                DatasetIdentifier di = KafkaUtils.datasetIdentifierOf(properties, topic);
+                String bootstrapServers = properties.getProperty("bootstrap.servers");
 
                 OpenLineage.DatasetFacetsBuilder datasetFacetsBuilder =
                     inputDataset().getDatasetFacetsBuilder();
+                OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+                    CommonUtils.createSymlinkFacet(
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+                datasetFacetsBuilder.symlinks(symlinksDatasetFacet);
                 // The issue here is that we assign dataset a schema that we're trying to read with.
                 // The read schema may be in mismatch with real dataset schema.
                 wrapper
@@ -54,7 +58,7 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
                         schema ->
                             datasetFacetsBuilder.schema(
                                 AvroSchemaUtils.convert(context.getOpenLineage(), schema)));
-                return inputDataset().getDataset(di, datasetFacetsBuilder);
+                return inputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder);
               })
           .collect(Collectors.toList());
     } catch (IllegalAccessException e) {
