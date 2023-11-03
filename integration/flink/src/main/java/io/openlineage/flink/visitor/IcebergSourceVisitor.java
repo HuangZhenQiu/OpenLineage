@@ -9,11 +9,14 @@ import io.openlineage.client.OpenLineage;
 import io.openlineage.client.utils.DatasetIdentifier;
 import io.openlineage.client.utils.DatasetIdentifierUtils;
 import io.openlineage.flink.api.OpenLineageContext;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.utils.IcebergUtils;
 import io.openlineage.flink.visitor.wrapper.IcebergSourceWrapper;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.iceberg.Table;
@@ -49,13 +52,22 @@ public class IcebergSourceVisitor extends Visitor<OpenLineage.InputDataset> {
               "Unsupported Iceberg Source type %s", source.getClass().getCanonicalName()));
     }
 
-    return Collections.singletonList(getDataset(context, sourceWrapper.getTable()));
+    return Collections.singletonList(
+        getDataset(context, sourceWrapper.getTable(), sourceWrapper.getNamespace()));
   }
 
-  private OpenLineage.InputDataset getDataset(OpenLineageContext context, Table table) {
+  private OpenLineage.InputDataset getDataset(
+      OpenLineageContext context, Table table, Optional<String> namespaceOpt) {
     OpenLineage openLineage = context.getOpenLineage();
     DatasetIdentifier datasetIdentifier =
         DatasetIdentifierUtils.fromURI(URI.create(table.location()));
+
+    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+        CommonUtils.createSymlinkFacet(
+            context.getOpenLineage(),
+            Constants.ICEBERG_TYPE,
+            table.name(),
+            namespaceOpt.orElse(""));
     return openLineage
         .newInputDatasetBuilder()
         .name(datasetIdentifier.getName())
@@ -64,6 +76,7 @@ public class IcebergSourceVisitor extends Visitor<OpenLineage.InputDataset> {
             openLineage
                 .newDatasetFacetsBuilder()
                 .schema(IcebergUtils.getSchema(context, table))
+                .symlinks(symlinksDatasetFacet)
                 .build())
         .build();
   }

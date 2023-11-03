@@ -9,11 +9,14 @@ import io.openlineage.client.OpenLineage;
 import io.openlineage.client.utils.DatasetIdentifier;
 import io.openlineage.client.utils.DatasetIdentifierUtils;
 import io.openlineage.flink.api.OpenLineageContext;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.utils.IcebergUtils;
 import io.openlineage.flink.visitor.wrapper.IcebergSinkWrapper;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.streaming.api.transformations.OneInputTransformation;
@@ -42,15 +45,24 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
         IcebergSinkWrapper.of(((OneInputTransformation) icebergSink).getOperator());
     return sinkWrapper
         .getTable()
-        .map(table -> getDataset(context, table))
+        .map(table -> getDataset(context, table, sinkWrapper.getNamespace()))
         .map(dataset -> Collections.singletonList(dataset))
         .orElse(Collections.emptyList());
   }
 
-  private OpenLineage.OutputDataset getDataset(OpenLineageContext context, Table table) {
+  private OpenLineage.OutputDataset getDataset(
+      OpenLineageContext context, Table table, Optional<String> namespaceOpt) {
     OpenLineage openLineage = context.getOpenLineage();
     DatasetIdentifier datasetIdentifier =
         DatasetIdentifierUtils.fromURI(URI.create(table.location()));
+
+    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+        CommonUtils.createSymlinkFacet(
+            context.getOpenLineage(),
+            Constants.ICEBERG_TYPE,
+            table.name(),
+            namespaceOpt.orElse(""));
+
     return openLineage
         .newOutputDatasetBuilder()
         .name(datasetIdentifier.getName())
@@ -59,6 +71,7 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
             openLineage
                 .newDatasetFacetsBuilder()
                 .schema(IcebergUtils.getSchema(context, table))
+                .symlinks(symlinksDatasetFacet)
                 .build())
         .build();
   }

@@ -5,9 +5,13 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import io.openlineage.flink.utils.IcebergUtils;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.flink.TableLoader;
 
+@Slf4j
 public class IcebergSourceWrapper<T> {
 
   private final T source;
@@ -26,5 +30,18 @@ public class IcebergSourceWrapper<T> {
     return WrapperUtils.<TableLoader>getFieldValue(sourceClass, source, "tableLoader")
         .map(TableLoader::loadTable)
         .get();
+  }
+
+  public Optional<String> getNamespace() {
+    try {
+      Optional<TableLoader> tableLoaderOpt =
+          WrapperUtils.<TableLoader>getFieldValue(sourceClass, source, "tableLoader");
+
+      return IcebergUtils.getNamespace(tableLoaderOpt);
+    } catch (Exception e) {
+      log.warn("Failed to find the tableLoader in Iceberg source.");
+    }
+
+    return Optional.empty();
   }
 }

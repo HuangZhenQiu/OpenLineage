@@ -8,6 +8,8 @@ package io.openlineage.flink.visitor;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.FlinkKafkaConsumerWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -46,11 +48,17 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
                 OpenLineage.DatasetFacetsBuilder facetsBuilder =
                     openLineage.newDatasetFacetsBuilder();
 
+                OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+                    CommonUtils.createSymlinkFacet(
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+
                 wrapper
                     .getAvroSchema()
                     .ifPresent(
                         schema ->
-                            facetsBuilder.schema(AvroSchemaUtils.convert(openLineage, schema)));
+                            facetsBuilder
+                                .schema(AvroSchemaUtils.convert(openLineage, schema))
+                                .symlinks(symlinksDatasetFacet));
 
                 return builder.facets(facetsBuilder.build()).build();
               })

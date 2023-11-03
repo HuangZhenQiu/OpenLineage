@@ -8,6 +8,8 @@ package io.openlineage.flink.visitor;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.KafkaSourceWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +45,10 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
               topic -> {
                 OpenLineage.DatasetFacetsBuilder datasetFacetsBuilder =
                     inputDataset().getDatasetFacetsBuilder();
+                OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+                    CommonUtils.createSymlinkFacet(
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+                datasetFacetsBuilder.symlinks(symlinksDatasetFacet);
                 // The issue here is that we assign dataset a schema that we're trying to read with.
                 // The read schema may be in mismatch with real dataset schema.
                 wrapper
