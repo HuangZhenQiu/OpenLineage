@@ -42,6 +42,7 @@ class JobListenerTest {
   JobClient jobClient = mock(JobClient.class);
   JobID jobId = mock(JobID.class);
   List<Transformation<?>> transformations = new ArrayList<>();
+  ClassLoader classLoader = this.getClass().getClassLoader();
   OpenLineageFlinkJobListener listener;
   FlinkExecutionContext context = mock(FlinkExecutionContext.class);
   OpenLineageContinousJobTracker tracker = mock(OpenLineageContinousJobTracker.class);
@@ -60,7 +61,7 @@ class JobListenerTest {
   @SneakyThrows
   void testOnJobSubmitted() {
     StreamExecutionEnvironment streamExecutionEnvironment =
-        new StreamExecutionEnvironment(readableConfig);
+        new StreamExecutionEnvironment(readableConfig, classLoader);
     FieldUtils.writeField(
         FieldUtils.getField(StreamExecutionEnvironment.class, "transformations", true),
         streamExecutionEnvironment,
@@ -85,7 +86,8 @@ class JobListenerTest {
               eq(jobName),
               eq(jobId),
               eq(JobTypeUtils.STREAMING),
-              eq(transformations)))
+              eq(transformations),
+              eq(classLoader)))
           .thenReturn(context);
       doNothing().when(context).onJobSubmitted();
 
@@ -127,7 +129,8 @@ class JobListenerTest {
               eq(customJobName),
               eq(jobId),
               eq(JobTypeUtils.STREAMING),
-              eq(transformations)))
+              eq(transformations),
+              eq(classLoader)))
           .thenReturn(context);
       when(OpenLineageContinousJobTrackerFactory.getTracker(
               configuration, OPENLINEAGE_LISTENER_CONFIG_DURATION.defaultValue()))
@@ -170,7 +173,8 @@ class JobListenerTest {
               eq(jobName),
               eq(jobId),
               eq(JobTypeUtils.STREAMING),
-              eq(transformations)))
+              eq(transformations),
+              eq(classLoader)))
           .thenReturn(context);
       doNothing().when(context).onJobSubmitted();
 
@@ -187,7 +191,8 @@ class JobListenerTest {
   @Test
   @SneakyThrows
   void testOnJobSubmittedWithDefaultNamespaceAndName() {
-    StreamExecutionEnvironment streamExecutionEnvironment = new StreamExecutionEnvironment();
+    StreamExecutionEnvironment streamExecutionEnvironment =
+        new StreamExecutionEnvironment(new Configuration(), classLoader);
     FieldUtils.writeField(
         FieldUtils.getField(StreamExecutionEnvironment.class, "transformations", true),
         streamExecutionEnvironment,
@@ -210,7 +215,8 @@ class JobListenerTest {
               eq(StreamGraphGenerator.DEFAULT_STREAMING_JOB_NAME),
               eq(jobId),
               eq(JobTypeUtils.STREAMING),
-              eq(transformations)))
+              eq(transformations),
+              eq(classLoader)))
           .thenReturn(context);
       doNothing().when(context).onJobSubmitted();
 

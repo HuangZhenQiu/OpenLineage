@@ -22,7 +22,9 @@ public class FlinkExecutionContextFactory {
       String jobName,
       JobID jobId,
       String jobType,
-      List<Transformation<?>> transformations) {
+      List<Transformation<?>> transformations,
+      ClassLoader userClassLoader) {
+
     return new FlinkExecutionContext.FlinkExecutionContextBuilder()
         .jobId(jobId)
         .processingType(jobType)
@@ -33,8 +35,10 @@ public class FlinkExecutionContextFactory {
         .openLineageContext(
             OpenLineageContext.builder()
                 .openLineage(new OpenLineage(EventEmitter.OPEN_LINEAGE_CLIENT_URI))
+                .userClassLoader(userClassLoader)
                 .build())
         .eventEmitter(new EventEmitter(configuration))
+        .userClassLoader(userClassLoader)
         .build();
   }
 }

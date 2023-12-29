@@ -48,6 +48,7 @@ public class FlinkExecutionContext implements ExecutionContext {
   private final String jobName;
   private final String jobNamespace;
   private final String processingType;
+  private final ClassLoader userClassLoader;
 
   @Getter private final List<Transformation<?>> transformations;
 

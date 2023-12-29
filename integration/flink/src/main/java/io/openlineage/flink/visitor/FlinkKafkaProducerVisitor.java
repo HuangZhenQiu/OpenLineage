@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Properties;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
 @Slf4j
 public class FlinkKafkaProducerVisitor extends Visitor<OpenLineage.OutputDataset> {
@@ -26,14 +25,13 @@ public class FlinkKafkaProducerVisitor extends Visitor<OpenLineage.OutputDataset
 
   @Override
   public boolean isDefinedAt(Object sink) {
-    return sink instanceof FlinkKafkaProducer;
+    return isInstanceOf(sink, "org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer");
   }
 
   @Override
   public List<OpenLineage.OutputDataset> apply(Object flinkKafkaProducer) {
     FlinkKafkaProducerWrapper wrapper =
-        FlinkKafkaProducerWrapper.of((FlinkKafkaProducer) flinkKafkaProducer);
-
+        FlinkKafkaProducerWrapper.of(flinkKafkaProducer, context.getUserClassLoader());
     Properties properties = wrapper.getKafkaProducerConfig();
     String bootstrapServers = properties.getProperty("bootstrap.servers");
     String topic = wrapper.getKafkaTopic();
@@ -50,7 +48,7 @@ public class FlinkKafkaProducerVisitor extends Visitor<OpenLineage.OutputDataset
         .map(
             schema ->
                 datasetFacetsBuilder
-                    .schema(AvroSchemaUtils.convert(context.getOpenLineage(), schema))
+                    .schema(AvroSchemaUtils.convert(context, schema))
                     .symlinks(symlinksDatasetFacet));
 
     log.debug("Kafka output topic: {}", topic);

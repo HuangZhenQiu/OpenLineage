@@ -13,47 +13,54 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.Schema;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.connector.kafka.source.KafkaSource;
-import org.apache.flink.connector.kafka.source.enumerator.subscriber.KafkaSubscriber;
-import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
-import org.apache.flink.formats.avro.AvroDeserializationSchema;
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer;
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 
 /**
- * Wrapper class to extract hidden fields and call hidden methods on {@link KafkaSource} object. It
- * encapsulates all the reflection methods used on {@link KafkaSource}.
+ * Wrapper class to extract hidden fields and call hidden methods on KafkaSource object. It
+ * encapsulates all the reflection methods used on KafkaSource.
  */
 @Slf4j
 public class KafkaSourceWrapper {
 
   private static final String DESERIALIZATION_SCHEMA_WRAPPER_CLASS =
       "org.apache.flink.connector.kafka.source.reader.deserializer.KafkaValueOnlyDeserializationSchemaWrapper";
-  private final KafkaSource kafkaSource;
+  private static final String KAFKA_TOPIC_DESCRIPTOR_CLASS =
+      "org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor";
+  private static final String KAFKA_PARTITION_DISCOVERER_CLASS =
+      "org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer";
+  private static final String AVRO_DESERIALIZATION_SCHEMA_CLASS =
+      "org.apache.flink.formats.avro.AvroDeserializationSchema";
 
-  @Getter private final KafkaSubscriber kafkaSubscriber;
+  private final Object kafkaSource;
 
-  private KafkaSourceWrapper(KafkaSource kafkaSource, KafkaSubscriber kafkaSubscriber) {
+  private final ClassLoader userClassLoader;
+
+  @Getter private final Object kafkaSubscriber;
+
+  private KafkaSourceWrapper(
+      Object kafkaSource, Object kafkaSubscriber, ClassLoader userClassLoader) {
     this.kafkaSource = kafkaSource;
     this.kafkaSubscriber = kafkaSubscriber;
+    this.userClassLoader = userClassLoader;
   }
 
-  public static KafkaSourceWrapper of(KafkaSource kafkaSource) throws IllegalAccessException {
-    Field subscriberField = FieldUtils.getField(KafkaSource.class, "subscriber", true);
-    KafkaSubscriber kafkaSubscriber = (KafkaSubscriber) subscriberField.get(kafkaSource);
+  public static KafkaSourceWrapper of(Object kafkaSource) throws IllegalAccessException {
+    Field subscriberField = FieldUtils.getField(kafkaSource.getClass(), "subscriber", true);
+    Object kafkaSubscriber = subscriberField.get(kafkaSource);
 
-    return new KafkaSourceWrapper(kafkaSource, kafkaSubscriber);
+    return new KafkaSourceWrapper(
+        kafkaSource, kafkaSubscriber, kafkaSource.getClass().getClassLoader());
   }
 
-  public KafkaSubscriber getSubscriber() {
+  public Object getSubscriber() {
     return kafkaSubscriber;
   }
 
   public Properties getProps() throws IllegalAccessException {
-    return WrapperUtils.<Properties>getFieldValue(KafkaSource.class, kafkaSource, "props").get();
+    return WrapperUtils.<Properties>getFieldValue(kafkaSource.getClass(), kafkaSource, "props")
+        .get();
   }
 
   public List<String> getTopics() throws IllegalAccessException {
@@ -71,50 +78,69 @@ public class KafkaSourceWrapper {
 
     // TODO: write some unit test to this
     if (topicPattern.isPresent()) {
-      KafkaTopicsDescriptor descriptor = new KafkaTopicsDescriptor(null, topicPattern.get());
+      try {
+        Class descriptorClass = userClassLoader.loadClass(KAFKA_TOPIC_DESCRIPTOR_CLASS);
+        Object descriptor =
+            descriptorClass
+                .getDeclaredConstructor(List.class, Pattern.class)
+                .newInstance(null, topicPattern.get());
 
-      KafkaPartitionDiscoverer partitionDiscoverer =
-          new KafkaPartitionDiscoverer(descriptor, 0, 0, getProps());
-      WrapperUtils.<List<String>>invoke(
-          KafkaPartitionDiscoverer.class, partitionDiscoverer, "initializeConnections");
-      return WrapperUtils.<List<String>>invoke(
-              KafkaPartitionDiscoverer.class, partitionDiscoverer, "getAllTopics")
-          .get();
+        Class partitionDiscovererClass =
+            userClassLoader.loadClass(KAFKA_PARTITION_DISCOVERER_CLASS);
+        Object partitionDiscoverer =
+            partitionDiscovererClass
+                .getDeclaredConstructor(descriptorClass, int.class, int.class, Properties.class)
+                .newInstance(descriptor, 0, 0, getProps());
+
+        WrapperUtils.<List<String>>invoke(
+            partitionDiscovererClass, partitionDiscoverer, "initializeConnections");
+        return WrapperUtils.<List<String>>invoke(
+                partitionDiscovererClass, partitionDiscoverer, "getAllTopics")
+            .get();
+      } catch (Exception e) {
+        log.error("Cannot get all topics from topic pattern ", e);
+      }
     }
     return Collections.emptyList();
   }
 
-  public KafkaRecordDeserializationSchema getDeserializationSchema() throws IllegalAccessException {
-    return WrapperUtils.<KafkaRecordDeserializationSchema>getFieldValue(
-            KafkaSource.class, kafkaSource, "deserializationSchema")
+  public Object getDeserializationSchema() throws IllegalAccessException {
+    return WrapperUtils.getFieldValue(kafkaSource.getClass(), kafkaSource, "deserializationSchema")
         .get();
   }
 
-  public Optional<Schema> getAvroSchema() {
+  public Optional<Object> getAvroSchema() {
     try {
       final Class deserializationSchemaWrapperClass =
           Class.forName(DESERIALIZATION_SCHEMA_WRAPPER_CLASS);
+
+      final Class avroDeserializationSchemaClass = Class.forName(AVRO_DESERIALIZATION_SCHEMA_CLASS);
+
       return Optional.of(getDeserializationSchema())
           .filter(el -> el.getClass().isAssignableFrom(deserializationSchemaWrapperClass))
           .flatMap(
               el ->
                   WrapperUtils.<DeserializationSchema>getFieldValue(
                       deserializationSchemaWrapperClass, el, "deserializationSchema"))
-          .filter(schema -> schema instanceof AvroDeserializationSchema)
-          .map(schema -> (AvroDeserializationSchema) schema)
-          .map(schema -> schema.getProducedType())
+          .filter(schema -> schema.getClass().isAssignableFrom(avroDeserializationSchemaClass))
+          .map(
+              schema ->
+                  WrapperUtils.<TypeInformation>invoke(
+                          avroDeserializationSchemaClass, schema, "getProducedType")
+                      .get())
           .flatMap(
               typeInformation -> {
                 if (typeInformation
                     .getTypeClass()
-                    .equals(org.apache.avro.generic.GenericRecord.class)) {
+                    .getCanonicalName()
+                    .equals("org.apache.avro.generic.GenericRecord")) {
                   // GenericRecordAvroTypeInfo -> try to extract private schema field
-                  return WrapperUtils.<Schema>getFieldValue(
+                  return WrapperUtils.<Object>getFieldValue(
                       typeInformation.getClass(), typeInformation, "schema");
                 } else {
                   return Optional.ofNullable(typeInformation.getTypeClass())
                       .flatMap(
-                          aClass -> WrapperUtils.<Schema>invokeStatic(aClass, "getClassSchema"));
+                          aClass -> WrapperUtils.<Object>invokeStatic(aClass, "getClassSchema"));
                 }
               });
     } catch (ClassNotFoundException | IllegalAccessException e) {

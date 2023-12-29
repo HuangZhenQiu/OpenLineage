@@ -13,6 +13,7 @@ import io.openlineage.flink.utils.CommonUtils;
 import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.utils.IcebergUtils;
 import io.openlineage.flink.visitor.wrapper.IcebergSinkWrapper;
+import io.openlineage.flink.visitor.wrapper.WrapperUtils;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
@@ -20,8 +21,6 @@ import java.util.Optional;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.streaming.api.transformations.OneInputTransformation;
-import org.apache.iceberg.Table;
-import org.apache.iceberg.catalog.TableIdentifier;
 
 @Slf4j
 public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
@@ -35,7 +34,7 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
     return sink instanceof OneInputTransformation
         && ((OneInputTransformation) sink)
             .getOperatorFactory()
-            .getStreamOperatorClass(ClassLoader.getSystemClassLoader())
+            .getStreamOperatorClass(context.getUserClassLoader())
             .getCanonicalName()
             .equals("org.apache.iceberg.flink.sink.IcebergFilesCommitter");
   }
@@ -43,7 +42,8 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
   @Override
   public List<OpenLineage.OutputDataset> apply(Object icebergSink) {
     IcebergSinkWrapper sinkWrapper =
-        IcebergSinkWrapper.of(((OneInputTransformation) icebergSink).getOperator());
+        IcebergSinkWrapper.of(
+            ((OneInputTransformation) icebergSink).getOperator(), context.getUserClassLoader());
     return sinkWrapper
         .getTable()
         .map(table -> getDataset(context, table, sinkWrapper.getNamespace()))
@@ -52,26 +52,37 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
   }
 
   private OpenLineage.OutputDataset getDataset(
-      OpenLineageContext context, Table table, Optional<String> namespaceOpt) {
+      OpenLineageContext context, Object table, Optional<String> namespaceOpt) {
     OpenLineage openLineage = context.getOpenLineage();
-    DatasetIdentifier datasetIdentifier =
-        DatasetIdentifierUtils.fromURI(URI.create(table.location()));
-    TableIdentifier identifier = TableIdentifier.parse(table.name());
+    try {
+      Class tableClass = context.getUserClassLoader().loadClass("org.apache.iceberg.Table");
+      Optional<String> location = WrapperUtils.invoke(tableClass, table, "location");
+      Optional<String> name = WrapperUtils.invoke(tableClass, table, "name");
 
-    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
-        CommonUtils.createSymlinkFacet(
-            context.getOpenLineage(), Constants.TABLE_TYPE, table.name(), namespaceOpt.orElse(""));
+      DatasetIdentifier datasetIdentifier =
+          DatasetIdentifierUtils.fromURI(URI.create(location.orElse("")));
+      OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+          CommonUtils.createSymlinkFacet(
+              context.getOpenLineage(),
+              Constants.TABLE_TYPE,
+              name.orElse(""),
+              namespaceOpt.orElse(""));
 
-    return openLineage
-        .newOutputDatasetBuilder()
-        .name(datasetIdentifier.getName())
-        .namespace(datasetIdentifier.getNamespace())
-        .facets(
-            openLineage
-                .newDatasetFacetsBuilder()
-                .schema(IcebergUtils.getSchema(context, table))
-                .symlinks(symlinksDatasetFacet)
-                .build())
-        .build();
+      return openLineage
+          .newOutputDatasetBuilder()
+          .name(datasetIdentifier.getName())
+          .namespace(datasetIdentifier.getNamespace())
+          .facets(
+              openLineage
+                  .newDatasetFacetsBuilder()
+                  .schema(IcebergUtils.getSchema(context, table))
+                  .symlinks(symlinksDatasetFacet)
+                  .build())
+          .build();
+    } catch (ClassNotFoundException e) {
+      log.debug("Class iceberg table is not found", e);
+    }
+
+    return openLineage.newOutputDatasetBuilder().build();
   }
 }

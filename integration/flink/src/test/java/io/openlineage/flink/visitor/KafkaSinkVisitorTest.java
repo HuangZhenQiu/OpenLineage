@@ -52,6 +52,7 @@ class KafkaSinkVisitorTest {
   public void setup() {
     props.put("bootstrap.servers", "server1;server2");
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
 
   @Test
@@ -64,7 +65,7 @@ class KafkaSinkVisitorTest {
   @SneakyThrows
   void testApply() {
     try (MockedStatic<KafkaSinkWrapper> mockedStatic = mockStatic(KafkaSinkWrapper.class)) {
-      when(KafkaSinkWrapper.of(kafkaSink)).thenReturn(wrapper);
+      when(KafkaSinkWrapper.of(kafkaSink, context.getUserClassLoader())).thenReturn(wrapper);
 
       when(wrapper.getKafkaTopic()).thenReturn("topic");
       when(wrapper.getKafkaProducerConfig()).thenReturn(props);
@@ -75,7 +76,7 @@ class KafkaSinkVisitorTest {
           outputDataset.getFacets().getSchema().getFields();
 
       assertEquals("topic", outputDataset.getName());
-      assertEquals("kafka://server1;server2", outputDataset.getNamespace());
+      assertEquals("server1;server2", outputDataset.getNamespace());
 
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
@@ -97,7 +98,7 @@ class KafkaSinkVisitorTest {
   @SneakyThrows
   void testApplyWhenIllegalAccessExceptionThrown() {
     try (MockedStatic<KafkaSinkWrapper> mockedStatic = mockStatic(KafkaSinkWrapper.class)) {
-      when(KafkaSinkWrapper.of(kafkaSink)).thenReturn(wrapper);
+      when(KafkaSinkWrapper.of(kafkaSink, context.getUserClassLoader())).thenReturn(wrapper);
 
       when(wrapper.getKafkaProducerConfig()).thenReturn(props);
       when(wrapper.getKafkaTopic()).thenThrow(new IllegalAccessException(""));

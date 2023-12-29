@@ -21,7 +21,10 @@ public class IcebergUtilsTest {
   void testGetNamespaceForHadoopTableLoader() {
     Configuration conf = new Configuration();
     TableLoader tableLoader = TableLoader.fromHadoopTable("hdfs://test", conf);
-    assertEquals("hdfs://test", IcebergUtils.getNamespace(Optional.of(tableLoader)).get());
+    assertEquals(
+        "hdfs://test",
+        IcebergUtils.getNamespace(this.getClass().getClassLoader(), Optional.of(tableLoader))
+            .get());
   }
 
   @Test
@@ -32,7 +35,9 @@ public class IcebergUtilsTest {
     TableIdentifier tableIdentifier = TableIdentifier.parse("hive.local.table");
     TableLoader tableLoader = TableLoader.fromCatalog(catalogLoader, tableIdentifier);
     assertEquals(
-        "thrift://localhost:9083", IcebergUtils.getNamespace(Optional.of(tableLoader)).get());
+        "thrift://localhost:9083",
+        IcebergUtils.getNamespace(this.getClass().getClassLoader(), Optional.of(tableLoader))
+            .get());
   }
 
   @Test
@@ -42,6 +47,9 @@ public class IcebergUtilsTest {
     CatalogLoader catalogLoader = CatalogLoader.hadoop("hive-catalog", conf, properties);
     TableIdentifier tableIdentifier = TableIdentifier.parse("hive.local.table");
     TableLoader tableLoader = TableLoader.fromCatalog(catalogLoader, tableIdentifier);
-    assertEquals("hdfs://test", IcebergUtils.getNamespace(Optional.of(tableLoader)).get());
+    assertEquals(
+        "hdfs://test",
+        IcebergUtils.getNamespace(this.getClass().getClassLoader(), Optional.of(tableLoader))
+            .get());
   }
 }

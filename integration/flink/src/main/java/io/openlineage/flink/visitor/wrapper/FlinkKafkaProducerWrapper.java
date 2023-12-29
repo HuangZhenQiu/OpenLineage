@@ -5,26 +5,26 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.CommonUtils.isInstanceOf;
+
 import java.util.Optional;
 import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.Schema;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
-import org.apache.flink.streaming.connectors.kafka.KafkaSerializationSchema;
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaSerializationSchemaWrapper;
-import org.apache.flink.streaming.connectors.kafka.internals.KeyedSerializationSchemaWrapper;
-import org.apache.flink.streaming.util.serialization.KeyedSerializationSchema;
 
 @Slf4j
 public class FlinkKafkaProducerWrapper {
-  FlinkKafkaProducer flinkKafkaProducer;
+  Object flinkKafkaProducer;
 
-  private FlinkKafkaProducerWrapper(FlinkKafkaProducer flinkKafkaProducer) {
+  ClassLoader userClassLoader;
+
+  private FlinkKafkaProducerWrapper(Object flinkKafkaProducer, ClassLoader userClassLoader) {
     this.flinkKafkaProducer = flinkKafkaProducer;
+    this.userClassLoader = userClassLoader;
   }
 
-  public static FlinkKafkaProducerWrapper of(FlinkKafkaProducer flinkKafkaProducer) {
-    return new FlinkKafkaProducerWrapper(flinkKafkaProducer);
+  public static FlinkKafkaProducerWrapper of(
+      Object flinkKafkaProducer, ClassLoader userClassLoader) {
+    return new FlinkKafkaProducerWrapper(flinkKafkaProducer, userClassLoader);
   }
 
   public String getKafkaTopic() {
@@ -35,35 +35,44 @@ public class FlinkKafkaProducerWrapper {
     return getField("producerConfig");
   }
 
-  public Optional<Schema> getAvroSchema() {
-    Optional<KeyedSerializationSchema> keyedSchema =
-        WrapperUtils.getFieldValue(FlinkKafkaProducer.class, flinkKafkaProducer, "keyedSchema");
+  public Optional<Object> getAvroSchema() {
+    Optional<Object> keyedSchema =
+        WrapperUtils.getFieldValue(
+            flinkKafkaProducer.getClass(), flinkKafkaProducer, "keyedSchema");
     if (keyedSchema.isPresent()) {
       return getKeyedAvroSchema(keyedSchema.get());
     }
     return getKafkaAvroSchema();
   }
 
-  private Optional<Schema> getKeyedAvroSchema(KeyedSerializationSchema serializationSchema) {
-    if (serializationSchema instanceof KeyedSerializationSchemaWrapper) {
+  private Optional<Object> getKeyedAvroSchema(Object serializationSchema) {
+    if (isInstanceOf(
+        userClassLoader,
+        serializationSchema,
+        "org.apache.flink.streaming.connectors.kafka.internals.KeyedSerializationSchemaWrapper")) {
       return AvroUtils.getAvroSchema(
+          userClassLoader,
           WrapperUtils.getFieldValue(
-              KeyedSerializationSchemaWrapper.class, serializationSchema, "serializationSchema"));
+              serializationSchema.getClass(), serializationSchema, "serializationSchema"));
     }
     return Optional.empty();
   }
 
-  private Optional<Schema> getKafkaAvroSchema() {
-    KafkaSerializationSchema kafkaSchema = getField("kafkaSchema");
-    if (kafkaSchema instanceof KafkaSerializationSchemaWrapper) {
+  private Optional<Object> getKafkaAvroSchema() {
+    Object kafkaSchema = getField("kafkaSchema");
+    if (isInstanceOf(
+        userClassLoader,
+        kafkaSchema,
+        "org.apache.flink.streaming.connectors.kafka.internals.KafkaSerializationSchemaWrapper")) {
       return AvroUtils.getAvroSchema(
-          WrapperUtils.getFieldValue(
-              KafkaSerializationSchemaWrapper.class, kafkaSchema, "serializationSchema"));
+          userClassLoader,
+          WrapperUtils.getFieldValue(kafkaSchema.getClass(), kafkaSchema, "serializationSchema"));
     }
     return Optional.empty();
   }
 
   private <T> T getField(String name) {
-    return WrapperUtils.<T>getFieldValue(FlinkKafkaProducer.class, flinkKafkaProducer, name).get();
+    return WrapperUtils.<T>getFieldValue(flinkKafkaProducer.getClass(), flinkKafkaProducer, name)
+        .get();
   }
 }

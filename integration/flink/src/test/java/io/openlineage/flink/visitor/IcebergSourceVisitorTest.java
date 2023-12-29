@@ -50,6 +50,7 @@ class IcebergSourceVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
 
   @Test
@@ -73,13 +74,14 @@ class IcebergSourceVisitorTest {
     Table table = mock(Table.class, RETURNS_DEEP_STUBS);
 
     try (MockedStatic<IcebergSourceWrapper> mockedStatic = mockStatic(IcebergSourceWrapper.class)) {
-      when(IcebergSourceWrapper.of(sourceObject, sourceClass)).thenReturn(wrapper);
+      when(IcebergSourceWrapper.of(sourceObject, sourceClass, sourceClass.getClassLoader()))
+          .thenReturn(wrapper);
       when(table.location()).thenReturn("s3://bucket/table/");
       when(table.schema().columns())
           .thenReturn(
               Collections.singletonList(Types.NestedField.of(1, false, "a", Types.LongType.get())));
       when(table.name()).thenReturn("hive.test.table");
-      when(wrapper.getTable()).thenReturn(table);
+      when(wrapper.getTable()).thenReturn(Optional.of(table));
       when(wrapper.getNamespace()).thenReturn(Optional.of("thrift://localhost:9083"));
 
       List<OpenLineage.InputDataset> inputDatasets = icebergSourceVisitor.apply(sourceObject);

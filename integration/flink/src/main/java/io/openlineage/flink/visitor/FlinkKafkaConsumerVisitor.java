@@ -17,7 +17,6 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 
 @Slf4j
 public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset> {
@@ -28,13 +27,14 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
 
   @Override
   public boolean isDefinedAt(Object object) {
-    return object instanceof FlinkKafkaConsumer;
+    return isInstanceOf(object, "org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer");
   }
 
   @Override
   public List<OpenLineage.InputDataset> apply(Object object) {
     try {
-      FlinkKafkaConsumerWrapper wrapper = FlinkKafkaConsumerWrapper.of((FlinkKafkaConsumer) object);
+      FlinkKafkaConsumerWrapper wrapper =
+          FlinkKafkaConsumerWrapper.of(object, context.getUserClassLoader());
       Properties properties = wrapper.getKafkaProperties();
       String bootstrapServers = properties.getProperty("bootstrap.servers");
       OpenLineage openLineage = context.getOpenLineage();
@@ -57,7 +57,7 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
                     .ifPresent(
                         schema ->
                             facetsBuilder
-                                .schema(AvroSchemaUtils.convert(openLineage, schema))
+                                .schema(AvroSchemaUtils.convert(context, schema))
                                 .symlinks(symlinksDatasetFacet));
 
                 return builder.facets(facetsBuilder.build()).build();

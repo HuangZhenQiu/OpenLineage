@@ -52,6 +52,7 @@ class FlinkKafkaProducerVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
 
   @Test
@@ -67,7 +68,8 @@ class FlinkKafkaProducerVisitorTest {
 
     try (MockedStatic<FlinkKafkaConsumerWrapper> mockedStatic =
         mockStatic(FlinkKafkaConsumerWrapper.class)) {
-      when(FlinkKafkaConsumerWrapper.of(kafkaConsumer)).thenReturn(wrapper);
+      when(FlinkKafkaConsumerWrapper.of(kafkaConsumer, kafkaConsumer.getClass().getClassLoader()))
+          .thenReturn(wrapper);
 
       when(wrapper.getTopics()).thenReturn(Arrays.asList("topic1", "topic2"));
       when(wrapper.getKafkaProperties()).thenReturn(props);
@@ -79,7 +81,7 @@ class FlinkKafkaProducerVisitorTest {
 
       assertEquals(2, inputDatasets.size());
       assertEquals("topic1", inputDatasets.get(0).getName());
-      assertEquals("kafka://server1;server2", inputDatasets.get(0).getNamespace());
+      assertEquals("server1;server2", inputDatasets.get(0).getNamespace());
 
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
@@ -102,7 +104,8 @@ class FlinkKafkaProducerVisitorTest {
   void testApplyWhenIllegalAccessExceptionThrown() {
     try (MockedStatic<FlinkKafkaConsumerWrapper> mockedStatic =
         mockStatic(FlinkKafkaConsumerWrapper.class)) {
-      when(FlinkKafkaConsumerWrapper.of(kafkaConsumer)).thenReturn(wrapper);
+      when(FlinkKafkaConsumerWrapper.of(kafkaConsumer, kafkaConsumer.getClass().getClassLoader()))
+          .thenReturn(wrapper);
 
       when(wrapper.getTopics()).thenThrow(new IllegalAccessException(""));
       when(wrapper.getKafkaProperties()).thenReturn(props);

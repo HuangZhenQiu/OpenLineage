@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import io.openlineage.client.OpenLineage;
+import io.openlineage.flink.api.OpenLineageContext;
 import java.net.URI;
 import java.util.List;
 import org.apache.avro.Schema;
@@ -43,8 +44,12 @@ class AvroSchemaUtilsTest {
 
   @Test
   void testConvert() {
-    OpenLineage.SchemaDatasetFacet schemaDatasetFacet =
-        AvroSchemaUtils.convert(openLineage, schema);
+    OpenLineageContext context =
+        OpenLineageContext.builder()
+            .openLineage(openLineage)
+            .userClassLoader(openLineage.getClass().getClassLoader())
+            .build();
+    OpenLineage.SchemaDatasetFacet schemaDatasetFacet = AvroSchemaUtils.convert(context, schema);
 
     List<OpenLineage.SchemaDatasetFacetFields> fields = schemaDatasetFacet.getFields();
 

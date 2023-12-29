@@ -5,43 +5,63 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.CommonUtils.isInstanceOf;
+
 import java.util.Optional;
-import org.apache.avro.Schema;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.formats.avro.AvroSerializationSchema;
-import org.apache.flink.formats.avro.RegistryAvroSerializationSchema;
 
+@Slf4j
 public class AvroUtils {
-  public static Optional<Schema> getAvroSchema(Optional<SerializationSchema> serializationSchema) {
-    // First try to get the RegistryAvroSerializationSchema
-    Optional<Schema> registryAvroSchema =
-        serializationSchema
-            .filter(schema -> schema instanceof RegistryAvroSerializationSchema)
-            .map(schema -> (RegistryAvroSerializationSchema) schema)
-            .flatMap(
-                schema -> {
-                  WrapperUtils.invoke(
-                      RegistryAvroSerializationSchema.class, schema, "checkAvroInitialized");
-                  return WrapperUtils.invoke(
-                      AvroSerializationSchema.class, schema, "getDatumWriter");
-                })
-            .flatMap(
-                writer -> WrapperUtils.<Schema>getFieldValue(writer.getClass(), writer, "root"));
+  public static final String AVRO_SERIALIZATION_SCHEMA_CLASS =
+      "org.apache.flink.formats.avro.AvroSerializationSchema";
+  public static final String REGISTRY_AVRO_SERIALIZATION_SCHEMA_CLASS =
+      "org.apache.flink.formats.avro.RegistryAvroSerializationSchema";
 
-    // If not present, try to get the AvroSerializationSchema
-    return registryAvroSchema.isPresent()
-        ? registryAvroSchema
-        : serializationSchema
-            .filter(schema -> schema instanceof AvroSerializationSchema)
-            .map(schema -> (AvroSerializationSchema) schema)
-            .flatMap(
-                schema -> {
-                  WrapperUtils.invoke(
-                      AvroSerializationSchema.class, schema, "checkAvroInitialized");
-                  return WrapperUtils.invoke(
-                      AvroSerializationSchema.class, schema, "getDatumWriter");
-                })
-            .flatMap(
-                writer -> WrapperUtils.<Schema>getFieldValue(writer.getClass(), writer, "root"));
+  public static final String GENERIC_DATUM_WRITER_CLASS =
+      "org.apache.avro.generic.GenericDatumWriter";
+
+  public static Optional<Object> getAvroSchema(
+      ClassLoader classLoader, Optional<SerializationSchema> serializationSchema) {
+    try {
+      Class avroSerializationSchemaClass = classLoader.loadClass(AVRO_SERIALIZATION_SCHEMA_CLASS);
+      Class registryAvroSerializationSchemaClass =
+          classLoader.loadClass(REGISTRY_AVRO_SERIALIZATION_SCHEMA_CLASS);
+      Class GenericDatumWriterClass = classLoader.loadClass(GENERIC_DATUM_WRITER_CLASS);
+
+      // First try to get the RegistryAvroSerializationSchema
+      Optional<Object> registryAvroSchema =
+          serializationSchema
+              .filter(
+                  schema ->
+                      isInstanceOf(classLoader, schema, REGISTRY_AVRO_SERIALIZATION_SCHEMA_CLASS))
+              .flatMap(
+                  schema -> {
+                    WrapperUtils.invoke(
+                        registryAvroSerializationSchemaClass, schema, "checkAvroInitialized");
+                    return WrapperUtils.invoke(
+                        avroSerializationSchemaClass, schema, "getDatumWriter");
+                  })
+              .flatMap(
+                  writer -> WrapperUtils.<Object>getFieldValue(writer.getClass(), writer, "root"));
+
+      // If not present, try to get the AvroSerializationSchema
+      return registryAvroSchema.isPresent()
+          ? registryAvroSchema
+          : serializationSchema
+              .filter(schema -> isInstanceOf(classLoader, schema, AVRO_SERIALIZATION_SCHEMA_CLASS))
+              .flatMap(
+                  schema -> {
+                    WrapperUtils.invoke(
+                        avroSerializationSchemaClass, schema, "checkAvroInitialized");
+                    return WrapperUtils.invoke(
+                        avroSerializationSchemaClass, schema, "getDatumWriter");
+                  })
+              .flatMap(
+                  writer -> WrapperUtils.<Object>getFieldValue(writer.getClass(), writer, "root"));
+    } catch (ClassNotFoundException e) {
+      log.debug("Required avro schema classes are not found.", e);
+    }
+    return Optional.empty();
   }
 }

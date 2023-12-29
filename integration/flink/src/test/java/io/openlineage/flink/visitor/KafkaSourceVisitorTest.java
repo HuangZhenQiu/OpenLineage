@@ -52,6 +52,7 @@ class KafkaSourceVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
 
   @Test
@@ -78,7 +79,7 @@ class KafkaSourceVisitorTest {
 
       assertEquals(2, inputDatasets.size());
       assertEquals("topic1", inputDatasets.get(0).getName());
-      assertEquals("kafka://server1;server2", inputDatasets.get(0).getNamespace());
+      assertEquals("server1;server2", inputDatasets.get(0).getNamespace());
 
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());

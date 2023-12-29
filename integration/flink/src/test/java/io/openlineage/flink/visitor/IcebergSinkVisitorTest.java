@@ -8,6 +8,7 @@ package io.openlineage.flink.visitor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -43,6 +44,7 @@ class IcebergSinkVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
     when(sink.getOperator()).thenReturn(icebergFilesCommitter);
   }
 
@@ -57,14 +59,15 @@ class IcebergSinkVisitorTest {
     Table table = mock(Table.class, RETURNS_DEEP_STUBS);
 
     try (MockedStatic<IcebergSinkWrapper> mockedStatic = mockStatic(IcebergSinkWrapper.class)) {
-      when(IcebergSinkWrapper.of(icebergFilesCommitter)).thenReturn(wrapper);
+      when(IcebergSinkWrapper.of(icebergFilesCommitter, context.getUserClassLoader()))
+          .thenReturn(wrapper);
       when(table.location()).thenReturn("s3://bucket/table/");
       when(table.name()).thenReturn("hive.test.table");
       when(table.schema().columns())
           .thenReturn(
               Collections.singletonList(Types.NestedField.of(1, false, "a", Types.LongType.get())));
-      when(wrapper.getTable()).thenReturn(Optional.of(table));
-      when(wrapper.getNamespace()).thenReturn(Optional.of("thrift://localhost:9083"));
+      doReturn(Optional.of(table)).when(wrapper).getTable();
+      doReturn(Optional.of("thrift://localhost:9083")).when(wrapper).getNamespace();
 
       List<OutputDataset> outputDatasets = sinkVisitor.apply(sink);
       List<OpenLineage.SchemaDatasetFacetFields> fields =

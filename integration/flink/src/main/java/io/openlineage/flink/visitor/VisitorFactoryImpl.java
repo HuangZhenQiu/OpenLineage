@@ -31,7 +31,7 @@ public class VisitorFactoryImpl implements VisitorFactory {
                 new LineageProviderVisitor<>(
                     context, DatasetFactory.input(context.getOpenLineage()))));
 
-    if (IcebergUtils.hasClasses()) {
+    if (IcebergUtils.hasClasses(context.getUserClassLoader())) {
       visitors.add(new IcebergSourceVisitor(context));
     }
 
@@ -52,7 +52,7 @@ public class VisitorFactoryImpl implements VisitorFactory {
                 new LineageProviderVisitor<>(
                     context, DatasetFactory.output(context.getOpenLineage()))));
 
-    if (IcebergUtils.hasClasses()) {
+    if (IcebergUtils.hasClasses(context.getUserClassLoader())) {
       visitors.add(new IcebergSinkVisitor(context));
     }
 

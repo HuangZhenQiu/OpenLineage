@@ -30,4 +30,6 @@ public class OpenLineageContext {
    * model objects
    */
   @NonNull OpenLineage openLineage;
+
+  @NonNull ClassLoader userClassLoader;
 }

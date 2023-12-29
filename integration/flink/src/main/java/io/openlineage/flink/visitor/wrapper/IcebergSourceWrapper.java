@@ -8,32 +8,42 @@ package io.openlineage.flink.visitor.wrapper;
 import io.openlineage.flink.utils.IcebergUtils;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.iceberg.Table;
-import org.apache.iceberg.flink.TableLoader;
 
 @Slf4j
 public class IcebergSourceWrapper<T> {
 
   private final T source;
   private Class sourceClass;
+  private ClassLoader userClassLoader;
 
-  public IcebergSourceWrapper(T source, Class sourceClass) {
+  public IcebergSourceWrapper(T source, Class sourceClass, ClassLoader userClassLoader) {
     this.source = source;
     this.sourceClass = sourceClass;
+    this.userClassLoader = userClassLoader;
   }
 
-  public static <T> IcebergSourceWrapper of(T source, Class sourceClass) {
-    return new IcebergSourceWrapper(source, sourceClass);
+  public static <T> IcebergSourceWrapper of(
+      T source, Class sourceClass, ClassLoader userClassLoader) {
+    return new IcebergSourceWrapper(source, sourceClass, userClassLoader);
   }
 
-  public Table getTable() {
-    return WrapperUtils.<TableLoader>getFieldValue(sourceClass, source, "tableLoader")
-        .map(TableLoader::loadTable)
-        .get();
+  public Optional<Object> getTable() {
+    try {
+      Optional<Object> tableLoaderOpt =
+          WrapperUtils.<Object>getFieldValue(sourceClass, source, "tableLoader");
+      if (tableLoaderOpt.isPresent()) {
+        Class tableLoaderClass = userClassLoader.loadClass("org.apache.iceberg.flink.TableLoader");
+        return WrapperUtils.invoke(tableLoaderClass, tableLoaderOpt.get(), "loadTable");
+      }
+
+    } catch (ClassNotFoundException e) {
+      log.debug("Iceberg TableLoader class is not found", e);
+    }
+    return Optional.empty();
   }
 
   public Optional<String> getNamespace() {
     return IcebergUtils.getNamespace(
-        WrapperUtils.<TableLoader>getFieldValue(sourceClass, source, "tableLoader"));
+        userClassLoader, WrapperUtils.getFieldValue(sourceClass, source, "tableLoader"));
   }
 }

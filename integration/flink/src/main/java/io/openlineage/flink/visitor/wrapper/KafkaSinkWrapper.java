@@ -9,34 +9,33 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.Schema;
-import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
-import org.apache.flink.connector.kafka.sink.KafkaSink;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 
 /**
- * Wrapper class to extract hidden fields and call hidden methods on {@link KafkaSink} object. It
- * encapsulates all the reflection methods used on {@link KafkaSink}.
+ * Wrapper class to extract hidden fields and call hidden methods on KafkaSink object. It
+ * encapsulates all the reflection methods used on KafkaSink.
  */
 @Slf4j
 public class KafkaSinkWrapper {
+  private final Object kafkaSink;
+  private final Object serializationSchema;
+  private final ClassLoader userClassLoader;
 
-  private final KafkaSink kafkaSink;
-  private final KafkaRecordSerializationSchema serializationSchema;
-
-  private KafkaSinkWrapper(KafkaSink kafkaSink) {
+  private KafkaSinkWrapper(Object kafkaSink, ClassLoader userClassLoader) {
     this.kafkaSink = kafkaSink;
     this.serializationSchema =
-        WrapperUtils.<KafkaRecordSerializationSchema>getFieldValue(
-                KafkaSink.class, kafkaSink, "recordSerializer")
+        WrapperUtils.<Object>getFieldValue(kafkaSink.getClass(), kafkaSink, "recordSerializer")
             .get();
+    this.userClassLoader = userClassLoader;
   }
 
-  public static KafkaSinkWrapper of(KafkaSink kafkaSink) {
-    return new KafkaSinkWrapper(kafkaSink);
+  public static KafkaSinkWrapper of(Object kafkaSink, ClassLoader userClassLoader) {
+    return new KafkaSinkWrapper(kafkaSink, userClassLoader);
   }
 
   public Properties getKafkaProducerConfig() {
-    return WrapperUtils.<Properties>getFieldValue(KafkaSink.class, kafkaSink, "kafkaProducerConfig")
+    return WrapperUtils.<Properties>getFieldValue(
+            kafkaSink.getClass(), kafkaSink, "kafkaProducerConfig")
         .get();
   }
 
@@ -54,9 +53,10 @@ public class KafkaSinkWrapper {
     return (String) function.apply(null);
   }
 
-  public Optional<Schema> getAvroSchema() {
+  public Optional<Object> getAvroSchema() {
     return AvroUtils.getAvroSchema(
-        WrapperUtils.getFieldValue(
+        userClassLoader,
+        WrapperUtils.<SerializationSchema>getFieldValue(
             serializationSchema.getClass(), serializationSchema, "valueSerializationSchema"));
   }
 }

@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.formats.avro.AvroDeserializationSchema;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor;
@@ -20,14 +19,17 @@ import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescript
 @Slf4j
 public class FlinkKafkaConsumerWrapper {
 
-  private final FlinkKafkaConsumer flinkKafkaConsumer;
+  private final Object flinkKafkaConsumer;
+  private final ClassLoader userClassLoader;
 
-  private FlinkKafkaConsumerWrapper(FlinkKafkaConsumer flinkKafkaConsumer) {
+  private FlinkKafkaConsumerWrapper(Object flinkKafkaConsumer, ClassLoader userClassLoader) {
     this.flinkKafkaConsumer = flinkKafkaConsumer;
+    this.userClassLoader = userClassLoader;
   }
 
-  public static FlinkKafkaConsumerWrapper of(FlinkKafkaConsumer flinkKafkaConsumer) {
-    return new FlinkKafkaConsumerWrapper(flinkKafkaConsumer);
+  public static FlinkKafkaConsumerWrapper of(
+      Object flinkKafkaConsumer, ClassLoader userClassLoader) {
+    return new FlinkKafkaConsumerWrapper(flinkKafkaConsumer, userClassLoader);
   }
 
   public Properties getKafkaProperties() {
@@ -87,7 +89,7 @@ public class FlinkKafkaConsumerWrapper {
   Optional<Class> getKafkaDeserializationSchemaWrapperClass() {
     try {
       return Optional.of(
-          Class.forName(
+          userClassLoader.loadClass(
               "org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchemaWrapper"));
     } catch (ClassNotFoundException e) {
       // do nothing - give another try
@@ -96,7 +98,7 @@ public class FlinkKafkaConsumerWrapper {
     try {
       // class renamed in newer Flink versions
       return Optional.of(
-          Class.forName(
+          userClassLoader.loadClass(
               "org.apache.flink.streaming.connectors.kafka.internals.KafkaDeserializationSchemaWrapper"));
     } catch (ClassNotFoundException e) {
 
@@ -107,6 +109,7 @@ public class FlinkKafkaConsumerWrapper {
   }
 
   private <T> T getField(String name) {
-    return WrapperUtils.<T>getFieldValue(FlinkKafkaConsumer.class, flinkKafkaConsumer, name).get();
+    return WrapperUtils.<T>getFieldValue(flinkKafkaConsumer.getClass(), flinkKafkaConsumer, name)
+        .get();
   }
 }

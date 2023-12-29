@@ -30,6 +30,7 @@ class LineageProviderVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
     visitor = new LineageProviderVisitor<>(context, DatasetFactory.input(openLineage));
   }
 

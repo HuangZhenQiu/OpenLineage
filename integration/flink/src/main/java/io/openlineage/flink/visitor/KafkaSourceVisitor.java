@@ -17,7 +17,6 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.connector.kafka.source.KafkaSource;
 
 @Slf4j
 public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
@@ -28,13 +27,13 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
 
   @Override
   public boolean isDefinedAt(Object source) {
-    return source instanceof KafkaSource;
+    return isInstanceOf(source, "org.apache.flink.connector.kafka.source.KafkaSource");
   }
 
   @Override
   public List<OpenLineage.InputDataset> apply(Object kafkaSource) {
     try {
-      KafkaSourceWrapper wrapper = KafkaSourceWrapper.of((KafkaSource<?>) kafkaSource);
+      KafkaSourceWrapper wrapper = KafkaSourceWrapper.of(kafkaSource);
       List<String> topics = wrapper.getTopics();
       Properties properties = wrapper.getProps();
 
@@ -56,8 +55,7 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
                     .getAvroSchema()
                     .map(
                         schema ->
-                            datasetFacetsBuilder.schema(
-                                AvroSchemaUtils.convert(context.getOpenLineage(), schema)));
+                            datasetFacetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
                 return inputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder);
               })
           .collect(Collectors.toList());

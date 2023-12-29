@@ -56,7 +56,7 @@ class KafkaSinkWrapperTest {
             .setRecordSerializer(serializationSchema)
             .build();
 
-    wrapper = KafkaSinkWrapper.of(kafkaSink);
+    wrapper = KafkaSinkWrapper.of(kafkaSink, kafkaSink.getClass().getClassLoader());
   }
 
   @Test

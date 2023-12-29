@@ -164,10 +164,14 @@ public class OpenLineageFlinkJobListener implements JobListener {
   void start(JobClient jobClient) {
     Field transformationsField =
         FieldUtils.getField(StreamExecutionEnvironment.class, "transformations", true);
+
+    Field userClassLoaderField =
+        FieldUtils.getField(StreamExecutionEnvironment.class, "userClassloader", true);
     try {
       List<Transformation<?>> transformations =
           ((ArchivedList<Transformation<?>>) transformationsField.get(executionEnvironment))
               .getValue();
+      ClassLoader userClassLoader = (ClassLoader) userClassLoaderField.get(executionEnvironment);
 
       FlinkExecutionContext context =
           FlinkExecutionContextFactory.getContext(
@@ -176,7 +180,8 @@ public class OpenLineageFlinkJobListener implements JobListener {
               jobName,
               jobClient.getJobID(),
               JobTypeUtils.extract(runtimeMode, transformations),
-              transformations);
+              transformations,
+              userClassLoader);
 
       jobContexts.put(jobClient.getJobID(), context);
       context.onJobSubmitted();
