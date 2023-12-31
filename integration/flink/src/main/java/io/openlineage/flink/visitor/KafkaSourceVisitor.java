@@ -37,7 +37,7 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
       List<String> topics = wrapper.getTopics();
       Properties properties = wrapper.getProps();
 
-      topics.forEach(topic -> log.debug("Kafka input topic: {}", topic));
+      topics.forEach(topic -> log.info("Kafka input topic: {}", topic));
       return topics.stream()
           .map(
               topic -> {

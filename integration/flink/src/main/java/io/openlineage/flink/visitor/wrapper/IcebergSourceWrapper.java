@@ -37,7 +37,7 @@ public class IcebergSourceWrapper<T> {
       }
 
     } catch (ClassNotFoundException e) {
-      log.debug("Iceberg TableLoader class is not found", e);
+      log.error("Iceberg TableLoader class is not found", e);
     }
     return Optional.empty();
   }

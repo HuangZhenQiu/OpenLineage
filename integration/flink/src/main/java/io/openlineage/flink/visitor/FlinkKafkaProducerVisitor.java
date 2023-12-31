@@ -51,7 +51,7 @@ public class FlinkKafkaProducerVisitor extends Visitor<OpenLineage.OutputDataset
                     .schema(AvroSchemaUtils.convert(context, schema))
                     .symlinks(symlinksDatasetFacet));
 
-    log.debug("Kafka output topic: {}", topic);
+    log.info("Kafka output topic: {}", topic);
 
     return Collections.singletonList(
         outputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder));

@@ -36,7 +36,7 @@ public class WrapperUtils {
         | ClassCastException
         | NullPointerException
         | IllegalArgumentException e) {
-      log.debug("cannot extract field {} from {}", field, aClass.getName(), e);
+      log.error("cannot extract field {} from {}", field, aClass.getName(), e);
       return Optional.empty();
     }
   }

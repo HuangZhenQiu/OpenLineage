@@ -31,7 +31,7 @@ public abstract class Visitor<D extends OpenLineage.Dataset> {
         return true;
       }
     } catch (Exception e) {
-      log.debug("Can't find class {} in classpath", className, e);
+      log.info("Can't find class {} in classpath for lineage inference", className, e);
     }
     return false;
   }

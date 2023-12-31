@@ -80,7 +80,7 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
                   .build())
           .build();
     } catch (ClassNotFoundException e) {
-      log.debug("Class iceberg table is not found", e);
+      log.error("Class iceberg table is not found", e);
     }
 
     return openLineage.newOutputDatasetBuilder().build();

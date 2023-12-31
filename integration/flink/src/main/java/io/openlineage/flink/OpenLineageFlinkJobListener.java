@@ -197,7 +197,9 @@ public class OpenLineageFlinkJobListener implements JobListener {
       @Nullable JobExecutionResult jobExecutionResult, @Nullable Throwable throwable) {
     log.info("onJobExecuted event triggered for {}.{}", jobNamespace, jobName);
     try {
-      jobTracker.stopTracking();
+      if (throwable != null) {
+        jobTracker.stopTracking();
+      }
       finish(jobExecutionResult, throwable);
     } catch (Exception | NoClassDefFoundError | NoSuchFieldError e) {
       log.error("Failed to notify OpenLineage about complete", e);

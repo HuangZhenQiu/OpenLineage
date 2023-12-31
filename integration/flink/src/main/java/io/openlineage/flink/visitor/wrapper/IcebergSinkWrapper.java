@@ -52,7 +52,7 @@ public class IcebergSinkWrapper {
       return WrapperUtils.<Object>getFieldValue(
           icebergFilesCommiterClass, icebergFilesCommitter, "tableLoader");
     } catch (ClassNotFoundException e) {
-      log.warn("Failed extracting table loader from IcebergFilesCommitter", e);
+      log.error("Failed extracting table loader from IcebergFilesCommitter", e);
     }
 
     return Optional.empty();

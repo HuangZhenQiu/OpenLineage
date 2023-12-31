@@ -49,7 +49,7 @@ public class KafkaSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
           .getAvroSchema()
           .map(schema -> datasetFacetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
 
-      log.debug("Kafka output topic: {}", topic);
+      log.info("Kafka output topic: {}", topic);
 
       return Collections.singletonList(
           outputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder));
