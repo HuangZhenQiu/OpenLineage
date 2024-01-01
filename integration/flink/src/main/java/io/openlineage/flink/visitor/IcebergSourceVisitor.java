@@ -45,27 +45,16 @@ public class IcebergSourceVisitor extends Visitor<OpenLineage.InputDataset> {
   @Override
   public List<OpenLineage.InputDataset> apply(Object source) {
     IcebergSourceWrapper sourceWrapper;
-    try {
-      if (isInstanceOf(source, STREAMING_MONITOR_FUNCTION)) {
-        Class streamingMonitorFunction =
-            context.getUserClassLoader().loadClass(STREAMING_MONITOR_FUNCTION);
-        sourceWrapper =
-            IcebergSourceWrapper.of(source, streamingMonitorFunction, context.getUserClassLoader());
-      } else if (isInstanceOf(source, ICEBERG_SOURCE)) {
-        Class icebergSource = context.getUserClassLoader().loadClass(ICEBERG_SOURCE);
-        sourceWrapper =
-            IcebergSourceWrapper.of(source, icebergSource, context.getUserClassLoader());
-      } else if (isInstanceOf(source, ICEBERG_TABLE_SOURCE)) {
-        Class icebergTableSource = context.getUserClassLoader().loadClass(ICEBERG_TABLE_SOURCE);
-        sourceWrapper =
-            IcebergSourceWrapper.of(source, icebergTableSource, context.getUserClassLoader());
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "Unsupported Iceberg Source type %s", source.getClass().getCanonicalName()));
-      }
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException(e);
+    if (isInstanceOf(source, STREAMING_MONITOR_FUNCTION)) {
+      sourceWrapper = IcebergSourceWrapper.of(source, context.getUserClassLoader());
+    } else if (isInstanceOf(source, ICEBERG_SOURCE)) {
+      sourceWrapper = IcebergSourceWrapper.of(source, context.getUserClassLoader());
+    } else if (isInstanceOf(source, ICEBERG_TABLE_SOURCE)) {
+      sourceWrapper = IcebergSourceWrapper.of(source, context.getUserClassLoader());
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported Iceberg Source type %s", source.getClass().getCanonicalName()));
     }
 
     return Collections.singletonList(
@@ -76,35 +65,31 @@ public class IcebergSourceVisitor extends Visitor<OpenLineage.InputDataset> {
       OpenLineageContext context, Optional<Object> table, Optional<String> namespaceOpt) {
     OpenLineage openLineage = context.getOpenLineage();
 
-    try {
-      if (table.isPresent()) {
-        Class tableClass = context.getUserClassLoader().loadClass("org.apache.iceberg.Table");
-        Optional<String> location = WrapperUtils.invoke(tableClass, table.get(), "location");
-        Optional<String> name = WrapperUtils.invoke(tableClass, table.get(), "name");
+    if (table.isPresent()) {
+      Optional<String> location =
+          WrapperUtils.invoke(table.get().getClass(), table.get(), "location");
+      Optional<String> name = WrapperUtils.invoke(table.get().getClass(), table.get(), "name");
 
-        DatasetIdentifier datasetIdentifier =
-            DatasetIdentifierUtils.fromURI(URI.create(location.orElse("")));
+      DatasetIdentifier datasetIdentifier =
+          DatasetIdentifierUtils.fromURI(URI.create(location.orElse("")));
 
-        OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
-            CommonUtils.createSymlinkFacet(
-                context.getOpenLineage(),
-                Constants.TABLE_TYPE,
-                name.orElse(""),
-                namespaceOpt.orElse(""));
-        return openLineage
-            .newInputDatasetBuilder()
-            .name(datasetIdentifier.getName())
-            .namespace(datasetIdentifier.getNamespace())
-            .facets(
-                openLineage
-                    .newDatasetFacetsBuilder()
-                    .schema(IcebergUtils.getSchema(context, table.get()))
-                    .symlinks(symlinksDatasetFacet)
-                    .build())
-            .build();
-      }
-    } catch (ClassNotFoundException e) {
-      log.error("Class iceberg table is not found", e);
+      OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+          CommonUtils.createSymlinkFacet(
+              context.getOpenLineage(),
+              Constants.TABLE_TYPE,
+              name.orElse(""),
+              namespaceOpt.orElse(""));
+      return openLineage
+          .newInputDatasetBuilder()
+          .name(datasetIdentifier.getName())
+          .namespace(datasetIdentifier.getNamespace())
+          .facets(
+              openLineage
+                  .newDatasetFacetsBuilder()
+                  .schema(IcebergUtils.getSchema(context, table.get()))
+                  .symlinks(symlinksDatasetFacet)
+                  .build())
+          .build();
     }
 
     return openLineage.newInputDatasetBuilder().build();

@@ -20,7 +20,6 @@ import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
-import org.apache.flink.formats.avro.AvroSerializationSchema;
 import org.apache.flink.formats.avro.RegistryAvroSerializationSchema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,7 +92,7 @@ class KafkaSinkWrapperTest {
           .thenReturn(Optional.of(avroSerializationSchema));
 
       when(WrapperUtils.invoke(
-              AvroSerializationSchema.class, avroSerializationSchema, "getDatumWriter"))
+              avroSerializationSchema.getClass(), avroSerializationSchema, "getDatumWriter"))
           .thenReturn(Optional.of(genericDatumWriter));
 
       when(WrapperUtils.getFieldValue(GenericDatumWriter.class, genericDatumWriter, "root"))
@@ -124,7 +123,7 @@ class KafkaSinkWrapperTest {
           .thenReturn(Optional.of(avroSerializationSchema));
 
       when(WrapperUtils.invoke(
-              AvroSerializationSchema.class, avroSerializationSchema, "getDatumWriter"))
+              avroSerializationSchema.getClass(), avroSerializationSchema, "getDatumWriter"))
           .thenReturn(Optional.empty());
 
       assertFalse(wrapper.getAvroSchema().isPresent());

@@ -74,7 +74,7 @@ public class FlinkKafkaConsumerWrapper {
           .flatMap(
               el ->
                   WrapperUtils.<DeserializationSchema>getFieldValue(
-                      kafkaDeserializationSchemaWrapperClass.get(), el, "deserializationSchema"))
+                      el.getClass(), el, "deserializationSchema"))
           .filter(schema -> schema instanceof AvroDeserializationSchema)
           .map(schema -> (AvroDeserializationSchema) schema)
           .map(schema -> schema.getProducedType())

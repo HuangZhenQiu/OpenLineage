@@ -27,14 +27,10 @@ public class IcebergSinkWrapper {
   }
 
   public Optional<Object> getTable() {
-    try {
-      Optional<Object> tableLoaderOpt = getTableLoader();
-      Class tableLoaderClass = userClassLoader.loadClass("org.apache.iceberg.flink.TableLoader");
-      if (tableLoaderOpt.isPresent()) {
-        return WrapperUtils.invoke(tableLoaderClass, tableLoaderOpt.get(), "loadTable");
-      }
-    } catch (ClassNotFoundException e) {
-      log.error("Can't find TableLoader class in classpath", e);
+    Optional<Object> tableLoaderOpt = getTableLoader();
+    if (tableLoaderOpt.isPresent()) {
+      return WrapperUtils.invoke(
+          tableLoaderOpt.get().getClass(), tableLoaderOpt.get(), "loadTable");
     }
     return Optional.empty();
   }

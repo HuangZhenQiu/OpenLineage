@@ -54,35 +54,28 @@ public class IcebergSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
   private OpenLineage.OutputDataset getDataset(
       OpenLineageContext context, Object table, Optional<String> namespaceOpt) {
     OpenLineage openLineage = context.getOpenLineage();
-    try {
-      Class tableClass = context.getUserClassLoader().loadClass("org.apache.iceberg.Table");
-      Optional<String> location = WrapperUtils.invoke(tableClass, table, "location");
-      Optional<String> name = WrapperUtils.invoke(tableClass, table, "name");
+    Optional<String> location = WrapperUtils.invoke(table.getClass(), table, "location");
+    Optional<String> name = WrapperUtils.invoke(table.getClass(), table, "name");
 
-      DatasetIdentifier datasetIdentifier =
-          DatasetIdentifierUtils.fromURI(URI.create(location.orElse("")));
-      OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
-          CommonUtils.createSymlinkFacet(
-              context.getOpenLineage(),
-              Constants.TABLE_TYPE,
-              name.orElse(""),
-              namespaceOpt.orElse(""));
+    DatasetIdentifier datasetIdentifier =
+        DatasetIdentifierUtils.fromURI(URI.create(location.orElse("")));
+    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+        CommonUtils.createSymlinkFacet(
+            context.getOpenLineage(),
+            Constants.TABLE_TYPE,
+            name.orElse(""),
+            namespaceOpt.orElse(""));
 
-      return openLineage
-          .newOutputDatasetBuilder()
-          .name(datasetIdentifier.getName())
-          .namespace(datasetIdentifier.getNamespace())
-          .facets(
-              openLineage
-                  .newDatasetFacetsBuilder()
-                  .schema(IcebergUtils.getSchema(context, table))
-                  .symlinks(symlinksDatasetFacet)
-                  .build())
-          .build();
-    } catch (ClassNotFoundException e) {
-      log.error("Class iceberg table is not found", e);
-    }
-
-    return openLineage.newOutputDatasetBuilder().build();
+    return openLineage
+        .newOutputDatasetBuilder()
+        .name(datasetIdentifier.getName())
+        .namespace(datasetIdentifier.getNamespace())
+        .facets(
+            openLineage
+                .newDatasetFacetsBuilder()
+                .schema(IcebergUtils.getSchema(context, table))
+                .symlinks(symlinksDatasetFacet)
+                .build())
+        .build();
   }
 }

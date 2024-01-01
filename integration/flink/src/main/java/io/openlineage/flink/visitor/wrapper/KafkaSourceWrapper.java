@@ -112,21 +112,21 @@ public class KafkaSourceWrapper {
   public Optional<Object> getAvroSchema() {
     try {
       final Class deserializationSchemaWrapperClass =
-          Class.forName(DESERIALIZATION_SCHEMA_WRAPPER_CLASS);
+          userClassLoader.loadClass(DESERIALIZATION_SCHEMA_WRAPPER_CLASS);
 
-      final Class avroDeserializationSchemaClass = Class.forName(AVRO_DESERIALIZATION_SCHEMA_CLASS);
+      final Class avroDeserializationSchemaClass =
+          userClassLoader.loadClass(AVRO_DESERIALIZATION_SCHEMA_CLASS);
 
       return Optional.of(getDeserializationSchema())
           .filter(el -> el.getClass().isAssignableFrom(deserializationSchemaWrapperClass))
           .flatMap(
               el ->
                   WrapperUtils.<DeserializationSchema>getFieldValue(
-                      deserializationSchemaWrapperClass, el, "deserializationSchema"))
+                      el.getClass(), el, "deserializationSchema"))
           .filter(schema -> schema.getClass().isAssignableFrom(avroDeserializationSchemaClass))
           .map(
               schema ->
-                  WrapperUtils.<TypeInformation>invoke(
-                          avroDeserializationSchemaClass, schema, "getProducedType")
+                  WrapperUtils.<TypeInformation>invoke(schema.getClass(), schema, "getProducedType")
                       .get())
           .flatMap(
               typeInformation -> {
