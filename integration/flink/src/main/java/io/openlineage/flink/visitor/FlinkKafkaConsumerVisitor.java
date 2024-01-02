@@ -5,14 +5,18 @@
 
 package io.openlineage.flink.visitor;
 
+import static io.openlineage.flink.utils.Constants.BOOTSTRAP_SERVER;
+
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
 import io.openlineage.flink.utils.CommonUtils;
 import io.openlineage.flink.utils.Constants;
+import io.openlineage.flink.utils.KafkaUtils;
 import io.openlineage.flink.visitor.wrapper.FlinkKafkaConsumerWrapper;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.NonNull;
@@ -36,21 +40,28 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
       FlinkKafkaConsumerWrapper wrapper =
           FlinkKafkaConsumerWrapper.of(object, context.getUserClassLoader());
       Properties properties = wrapper.getKafkaProperties();
-      String bootstrapServers = properties.getProperty("bootstrap.servers");
+      Optional<String> kaffeServersOpt =
+          KafkaUtils.resolveBootstrapServerByKaffe(context.getUserClassLoader(), properties);
+      String bootstrapServers =
+          kaffeServersOpt.isPresent()
+              ? kaffeServersOpt.get()
+              : properties.getProperty(BOOTSTRAP_SERVER);
+
       OpenLineage openLineage = context.getOpenLineage();
 
       return wrapper.getTopics().stream()
           .map(
               topic -> {
+                String namespace = KafkaUtils.convertToNamespace(Optional.of(bootstrapServers));
                 OpenLineage.InputDatasetBuilder builder =
-                    openLineage.newInputDatasetBuilder().namespace(bootstrapServers).name(topic);
+                    openLineage.newInputDatasetBuilder().namespace(namespace).name(topic);
 
                 OpenLineage.DatasetFacetsBuilder facetsBuilder =
                     inputDataset().getDatasetFacetsBuilder();
 
                 OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
                     CommonUtils.createSymlinkFacet(
-                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, namespace);
 
                 wrapper
                     .getAvroSchema()

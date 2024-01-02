@@ -5,14 +5,18 @@
 
 package io.openlineage.flink.visitor;
 
+import static io.openlineage.flink.utils.Constants.BOOTSTRAP_SERVER;
+
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
 import io.openlineage.flink.utils.CommonUtils;
 import io.openlineage.flink.utils.Constants;
+import io.openlineage.flink.utils.KafkaUtils;
 import io.openlineage.flink.visitor.wrapper.KafkaSinkWrapper;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -34,15 +38,21 @@ public class KafkaSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
     KafkaSinkWrapper wrapper = KafkaSinkWrapper.of(kafkaSink, context.getUserClassLoader());
     try {
       Properties properties = wrapper.getKafkaProducerConfig();
-      String bootstrapServers = properties.getProperty("bootstrap.servers");
       String topic = wrapper.getKafkaTopic();
+      Optional<String> kaffeServersOpt =
+          KafkaUtils.resolveBootstrapServerByKaffe(context.getUserClassLoader(), properties);
+      String bootstrapServers =
+          kaffeServersOpt.isPresent()
+              ? kaffeServersOpt.get()
+              : properties.getProperty(BOOTSTRAP_SERVER);
 
+      String namespace = KafkaUtils.convertToNamespace(Optional.of(bootstrapServers));
       OpenLineage.DatasetFacetsBuilder datasetFacetsBuilder =
           outputDataset().getDatasetFacetsBuilder();
 
       OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
           CommonUtils.createSymlinkFacet(
-              context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+              context.getOpenLineage(), Constants.KAFKA_TYPE, topic, namespace);
       datasetFacetsBuilder.symlinks(symlinksDatasetFacet);
 
       wrapper
@@ -52,7 +62,7 @@ public class KafkaSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
       log.info("Kafka output topic: {}", topic);
 
       return Collections.singletonList(
-          outputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder));
+          outputDataset().getDataset(topic, namespace, datasetFacetsBuilder));
     } catch (IllegalAccessException e) {
       log.error("Can't access the field. ", e);
     }

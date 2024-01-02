@@ -64,7 +64,7 @@ class KafkaSourceVisitorTest {
   @Test
   @SneakyThrows
   void testApply() {
-    props.put("bootstrap.servers", "server1;server2");
+    props.put("bootstrap.servers", "server1:65506,server2:65506");
 
     try (MockedStatic<KafkaSourceWrapper> mockedStatic = mockStatic(KafkaSourceWrapper.class)) {
       when(KafkaSourceWrapper.of(kafkaSource)).thenReturn(wrapper);
@@ -79,7 +79,7 @@ class KafkaSourceVisitorTest {
 
       assertEquals(2, inputDatasets.size());
       assertEquals("topic1", inputDatasets.get(0).getName());
-      assertEquals("server1;server2", inputDatasets.get(0).getNamespace());
+      assertEquals("kafka://server1:65506", inputDatasets.get(0).getNamespace());
 
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
@@ -93,7 +93,7 @@ class KafkaSourceVisitorTest {
           inputDatasets.get(0).getFacets().getSymlinks().getIdentifiers().get(0);
       assertEquals(Constants.KAFKA_TYPE, symlinkIdentifier.getType());
       assertEquals("topic1", symlinkIdentifier.getName());
-      assertEquals("server1;server2", symlinkIdentifier.getNamespace());
+      assertEquals("kafka://server1:65506", symlinkIdentifier.getNamespace());
     }
   }
 

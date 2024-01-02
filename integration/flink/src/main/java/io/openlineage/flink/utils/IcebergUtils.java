@@ -30,41 +30,39 @@ public class IcebergUtils {
   }
 
   public static OpenLineage.SchemaDatasetFacet getSchema(OpenLineageContext context, Object table) {
-    try {
-      Class tableClass = context.getUserClassLoader().loadClass("org.apache.iceberg.Table");
-      Class schemaClass = context.getUserClassLoader().loadClass("org.apache.iceberg.Schema");
-      Class nestedFieldClass = Class.forName("org.apache.iceberg.types.Types$NestedField");
-      Class typeClass = context.getUserClassLoader().loadClass("org.apache.iceberg.types.Type");
+    Optional<Object> schemaOpt = WrapperUtils.invoke(table.getClass(), table, "schema");
+    if (schemaOpt.isPresent()) {
+      Optional<List<Object>> schemaFieldsOpt =
+          WrapperUtils.<List<Object>>invoke(schemaOpt.get().getClass(), schemaOpt.get(), "columns");
 
-      Optional<Object> schemaOpt = WrapperUtils.invoke(tableClass, table, "schema");
-      if (schemaOpt.isPresent()) {
-        Optional<List<Object>> schemaFieldsOpt =
-            WrapperUtils.<List<Object>>invoke(schemaClass, schemaOpt.get(), "columns");
-
-        if (schemaFieldsOpt.isPresent()) {
-          List<SchemaDatasetFacetFields> fields =
-              schemaFieldsOpt.get().stream()
-                  .map(
-                      field -> {
-                        Optional<String> name =
-                            WrapperUtils.<String>invoke(nestedFieldClass, field, "name");
-                        Optional<String> doc =
-                            WrapperUtils.<String>invoke(nestedFieldClass, field, "doc");
-                        Optional<Object> type =
-                            WrapperUtils.<Object>invoke(nestedFieldClass, field, "type");
-                        Optional<Object> typeId =
-                            WrapperUtils.<Object>invoke(typeClass, type.get(), "typeId");
-                        return context
-                            .getOpenLineage()
-                            .newSchemaDatasetFacetFields(
-                                name.orElse(""), typeId.orElse("").toString(), doc.orElse(""));
-                      })
-                  .collect(Collectors.toList());
-          return context.getOpenLineage().newSchemaDatasetFacet(fields);
-        }
+      if (schemaFieldsOpt.isPresent()) {
+        List<SchemaDatasetFacetFields> fields =
+            schemaFieldsOpt.get().stream()
+                .map(
+                    field -> {
+                      Optional<String> name =
+                          WrapperUtils.<String>invoke(field.getClass(), field, "name");
+                      Optional<String> doc =
+                          WrapperUtils.<String>invoke(field.getClass(), field, "doc");
+                      Optional<Object> type =
+                          WrapperUtils.<Object>invoke(field.getClass(), field, "type");
+                      Optional<Object> typeId =
+                          type.isPresent()
+                              ? WrapperUtils.<Object>invoke(
+                                  type.get().getClass(), type.get(), "typeId")
+                              : Optional.empty();
+                      return context
+                          .getOpenLineage()
+                          .newSchemaDatasetFacetFields(
+                              name.orElse(""), typeId.orElse("").toString(), doc.orElse(""));
+                    })
+                .collect(Collectors.toList());
+        return context.getOpenLineage().newSchemaDatasetFacet(fields);
+      } else {
+        log.info("Columns in iceberg schema is not found");
       }
-    } catch (ClassNotFoundException e) {
-      log.debug("Required iceberg class for schema inference is not found", e);
+    } else {
+      log.info("Columns in iceberg schema is not found");
     }
     return context.getOpenLineage().newSchemaDatasetFacet(List.of());
   }

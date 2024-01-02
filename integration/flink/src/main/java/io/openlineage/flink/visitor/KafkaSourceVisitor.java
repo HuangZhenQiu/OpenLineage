@@ -5,14 +5,18 @@
 
 package io.openlineage.flink.visitor;
 
+import static io.openlineage.flink.utils.Constants.BOOTSTRAP_SERVER;
+
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.utils.AvroSchemaUtils;
 import io.openlineage.flink.utils.CommonUtils;
 import io.openlineage.flink.utils.Constants;
+import io.openlineage.flink.utils.KafkaUtils;
 import io.openlineage.flink.visitor.wrapper.KafkaSourceWrapper;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.NonNull;
@@ -36,18 +40,23 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
       KafkaSourceWrapper wrapper = KafkaSourceWrapper.of(kafkaSource);
       List<String> topics = wrapper.getTopics();
       Properties properties = wrapper.getProps();
+      Optional<String> kaffeServersOpt =
+          KafkaUtils.resolveBootstrapServerByKaffe(context.getUserClassLoader(), properties);
+      String bootstrapServers =
+          kaffeServersOpt.isPresent()
+              ? kaffeServersOpt.get()
+              : properties.getProperty(BOOTSTRAP_SERVER);
 
+      String namespace = KafkaUtils.convertToNamespace(Optional.of(bootstrapServers));
       topics.forEach(topic -> log.info("Kafka input topic: {}", topic));
       return topics.stream()
           .map(
               topic -> {
-                String bootstrapServers = properties.getProperty("bootstrap.servers");
-
                 OpenLineage.DatasetFacetsBuilder datasetFacetsBuilder =
                     inputDataset().getDatasetFacetsBuilder();
                 OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
                     CommonUtils.createSymlinkFacet(
-                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, bootstrapServers);
+                        context.getOpenLineage(), Constants.KAFKA_TYPE, topic, namespace);
                 datasetFacetsBuilder.symlinks(symlinksDatasetFacet);
                 // The issue here is that we assign dataset a schema that we're trying to read with.
                 // The read schema may be in mismatch with real dataset schema.
@@ -56,7 +65,7 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
                     .map(
                         schema ->
                             datasetFacetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
-                return inputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder);
+                return inputDataset().getDataset(topic, namespace, datasetFacetsBuilder);
               })
           .collect(Collectors.toList());
     } catch (IllegalAccessException e) {

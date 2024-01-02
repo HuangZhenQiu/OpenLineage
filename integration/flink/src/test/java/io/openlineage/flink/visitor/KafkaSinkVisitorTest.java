@@ -50,7 +50,7 @@ class KafkaSinkVisitorTest {
   @BeforeEach
   @SneakyThrows
   public void setup() {
-    props.put("bootstrap.servers", "server1;server2");
+    props.put("bootstrap.servers", "server1:65506,server2:65506");
     when(context.getOpenLineage()).thenReturn(openLineage);
     when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
@@ -76,7 +76,7 @@ class KafkaSinkVisitorTest {
           outputDataset.getFacets().getSchema().getFields();
 
       assertEquals("topic", outputDataset.getName());
-      assertEquals("server1;server2", outputDataset.getNamespace());
+      assertEquals("kafka://server1:65506", outputDataset.getNamespace());
 
       assertEquals(1, fields.size());
       assertEquals("a", fields.get(0).getName());
@@ -90,7 +90,7 @@ class KafkaSinkVisitorTest {
           outputDataset.getFacets().getSymlinks().getIdentifiers().get(0);
       assertEquals(Constants.KAFKA_TYPE, symlinkIdentifier.getType());
       assertEquals("topic", symlinkIdentifier.getName());
-      assertEquals("server1;server2", symlinkIdentifier.getNamespace());
+      assertEquals("kafka://server1:65506", symlinkIdentifier.getNamespace());
     }
   }
 

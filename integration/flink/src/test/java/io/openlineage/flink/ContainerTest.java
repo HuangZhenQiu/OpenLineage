@@ -237,7 +237,7 @@ class ContainerTest {
         mockServerClient.retrieveRecordedRequests(this.getEvent("events/expected_iceberg.json"))[0];
 
     assertThat(StringUtils.countMatches(request.getBodyAsString(), "tmp/warehouse/db/source"))
-        .isEqualTo(1);
+        .isEqualTo(3);
   }
 
   @Test
@@ -253,7 +253,7 @@ class ContainerTest {
             .retrieveRecordedRequests(this.getEvent("events/expected_iceberg_source.json"))[0];
 
     assertThat(StringUtils.countMatches(request.getBodyAsString(), "tmp/warehouse/db/source"))
-        .isEqualTo(1);
+        .isEqualTo(3);
   }
 
   @Test
