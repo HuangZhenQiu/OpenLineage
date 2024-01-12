@@ -1,0 +1,45 @@
+schemaVersion: 2.0
+
+pipelines:
+  - branchName: 1.7.1-ase-apple
+    name: openlineage-1.7-ase-flink-prb
+    trigger:
+      gitPush: true
+    build:
+      template: freestyle:v4:prb
+      steps:
+        - cd ./client/java
+        - ./gradlew --no-daemon publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../../integration/flink
+        - ./gradlew clean build --stacktrace --build-cache -x signMavenJavaPublication
+    machine:
+      baseImage: docker.apple.com/base-images/ubi9/java11-builder
+
+  - branchName: 1.7.1-ase-apple
+    name: openlineage-1.7-ase-flink-publish
+    trigger:
+      gitPush: false
+    build:
+      template: freestyle:v4:publish
+      buildParameters:
+        - parameter: RELEASE_VERSION
+          description: Release version
+          defaultValue: "1.7.1-1"
+      steps:
+        - cd ./apple
+        - ./bump_version.sh
+        - cd ../client/java
+        - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../../integration/flink
+        - ./gradlew clean build publishToMavenLocal --stacktrace --build-cache -x signMavenJavaPublication
+        - cd ../../
+        - mv /root/.m2/repository /workspace/.repo
+        - ls -lsa /workspace/.repo/**/**
+        - ci stage-lib  "/workspace/.repo/**" --exclude "**/*.xml" --exclude "**/*.md5" --exclude "**/*.sha1" --exclude "**/*javadoc.jar" --exclude "**/*SNAP*"
+    machine:
+      baseImage: docker.apple.com/base-images/ubi8/java11-builder
+    package:
+      release: true
+      freeform:
+        - publish:
+            - repo: m2:oss-patched

@@ -45,7 +45,7 @@ ext {
     junit5Version = '5.10.1'
     lombokVersion = '1.18.30'
     mockitoVersion = '5.2.0'
-    isReleaseVersion = !version.endsWith('SNAPSHOT')
+    isReleaseVersion = false
 }
 
 configurations {

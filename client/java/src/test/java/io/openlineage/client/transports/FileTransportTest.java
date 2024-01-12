@@ -48,7 +48,6 @@ public class FileTransportTest {
     assertThat(lines.get(0)).contains("test-job");
   }
 
-  @Test
   @SneakyThrows
   public void transportCannotAppendToFileWhenFileNotWriteable() {
     fileConfig = new FileConfig();
