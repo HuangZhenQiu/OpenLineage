@@ -35,7 +35,7 @@ public class VisitorFactoryImpl implements VisitorFactory {
       visitors.add(new IcebergSourceVisitor(context));
     }
 
-    if (CassandraUtils.hasClasses()) {
+    if (CassandraUtils.hasClasses(context.getUserClassLoader())) {
       visitors.add(new CassandraSourceVisitor(context));
     }
 
@@ -56,7 +56,7 @@ public class VisitorFactoryImpl implements VisitorFactory {
       visitors.add(new IcebergSinkVisitor(context));
     }
 
-    if (CassandraUtils.hasClasses()) {
+    if (CassandraUtils.hasClasses(context.getUserClassLoader())) {
       visitors.add(new CassandraSinkVisitor(context));
     }
 

@@ -44,6 +44,7 @@ public class CassandraSinkVisitorTest {
   @SneakyThrows
   public void setup() {
     when(context.getOpenLineage()).thenReturn(openLineage);
+    when(context.getUserClassLoader()).thenReturn(this.getClass().getClassLoader());
   }
 
   @Test

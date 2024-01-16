@@ -20,17 +20,28 @@ public class CassandraSinkWrapper<T> {
 
   private static final Pattern INSERT_REGEXP =
       Pattern.compile("(?i)insert.+into (\\w+)\\.(\\w+).*;$");
+  private ClassLoader userClassLoader;
   private String fieldName;
   private T sink;
   private Class sinkClass;
   private boolean hasInsertQuery;
 
   public static <T> CassandraSinkWrapper of(
-      T sink, Class sinkClass, String fieldName, boolean hasInsertQuery) {
-    return new CassandraSinkWrapper(sink, sinkClass, fieldName, hasInsertQuery);
+      ClassLoader userClassLoader,
+      T sink,
+      Class sinkClass,
+      String fieldName,
+      boolean hasInsertQuery) {
+    return new CassandraSinkWrapper(userClassLoader, sink, sinkClass, fieldName, hasInsertQuery);
   }
 
-  public CassandraSinkWrapper(T sink, Class sinkClass, String fieldName, boolean hasInsertQuery) {
+  public CassandraSinkWrapper(
+      ClassLoader userClassLoader,
+      T sink,
+      Class sinkClass,
+      String fieldName,
+      boolean hasInsertQuery) {
+    this.userClassLoader = userClassLoader;
     this.sink = sink;
     this.sinkClass = sinkClass;
     this.hasInsertQuery = hasInsertQuery;

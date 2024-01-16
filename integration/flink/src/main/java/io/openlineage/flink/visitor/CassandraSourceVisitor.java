@@ -12,11 +12,13 @@ import java.util.Collections;
 import java.util.List;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.batch.connectors.cassandra.CassandraInputFormat;
-import org.apache.flink.batch.connectors.cassandra.CassandraPojoInputFormat;
 
 @Slf4j
 public class CassandraSourceVisitor extends Visitor<OpenLineage.InputDataset> {
+  public static final String CASSANDRA_INPUT_FORMAT_CLASS =
+      "org.apache.flink.batch.connectors.cassandra.CassandraInputFormat";
+  public static final String CASSANDRA_POJO_INPUT_FORMAT_CLASS =
+      "org.apache.flink.batch.connectors.cassandra.CassandraPojoInputFormat";
 
   public CassandraSourceVisitor(@NonNull OpenLineageContext context) {
     super(context);
@@ -24,17 +26,18 @@ public class CassandraSourceVisitor extends Visitor<OpenLineage.InputDataset> {
 
   @Override
   public boolean isDefinedAt(Object object) {
-    return object instanceof CassandraInputFormat || object instanceof CassandraPojoInputFormat;
+    return isInstanceOf(object, CASSANDRA_INPUT_FORMAT_CLASS)
+        || isInstanceOf(object, CASSANDRA_POJO_INPUT_FORMAT_CLASS);
   }
 
   @Override
   public List<OpenLineage.InputDataset> apply(Object object) {
     log.debug("Apply source {} in CassandraSourceVisitor", object);
     CassandraSourceWrapper sourceWrapper;
-    if (object instanceof CassandraInputFormat) {
-      sourceWrapper = CassandraSourceWrapper.of(object, CassandraInputFormat.class, true);
-    } else if (object instanceof CassandraPojoInputFormat) {
-      sourceWrapper = CassandraSourceWrapper.of(object, CassandraPojoInputFormat.class, true);
+    if (isInstanceOf(object, CASSANDRA_INPUT_FORMAT_CLASS)
+        || isInstanceOf(object, CASSANDRA_POJO_INPUT_FORMAT_CLASS)) {
+      sourceWrapper =
+          CassandraSourceWrapper.of(context.getUserClassLoader(), object, object.getClass(), true);
     } else {
       throw new UnsupportedOperationException(
           String.format(

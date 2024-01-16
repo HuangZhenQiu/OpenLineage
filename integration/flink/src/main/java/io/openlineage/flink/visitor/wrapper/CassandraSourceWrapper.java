@@ -19,18 +19,22 @@ public class CassandraSourceWrapper<T> {
   private static final String POJO_CLASS_FIELD_NAME = "inputClass";
   private static final String QUERY_FIELD_NAME = "query";
 
+  private ClassLoader userClassLoader;
   private T source;
   private Class sourceClass;
   private boolean hasQuery;
 
-  public CassandraSourceWrapper(T source, Class sourceClass, boolean hasQuery) {
+  public CassandraSourceWrapper(
+      ClassLoader userClassLoader, T source, Class sourceClass, boolean hasQuery) {
+    this.userClassLoader = userClassLoader;
     this.source = source;
     this.sourceClass = sourceClass;
     this.hasQuery = hasQuery;
   }
 
-  public static <T> CassandraSourceWrapper of(T source, Class sourceClass, boolean hasQuery) {
-    return new CassandraSourceWrapper(source, sourceClass, hasQuery);
+  public static <T> CassandraSourceWrapper of(
+      ClassLoader userClassLoader, T source, Class sourceClass, boolean hasQuery) {
+    return new CassandraSourceWrapper(userClassLoader, source, sourceClass, hasQuery);
   }
 
   public String getKeyspace() {

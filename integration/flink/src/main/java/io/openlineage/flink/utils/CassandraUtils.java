@@ -12,12 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CassandraUtils {
-
-  public static boolean hasClasses() {
+  public static boolean hasClasses(ClassLoader classloader) {
     try {
-      CassandraUtils.class
-          .getClassLoader()
-          .loadClass("org.apache.flink.batch.connectors.cassandra.CassandraInputFormat");
+      classloader.loadClass("org.apache.flink.batch.connectors.cassandra.CassandraInputFormat");
       return true;
     } catch (Exception e) {
       // swallow- we don't care
