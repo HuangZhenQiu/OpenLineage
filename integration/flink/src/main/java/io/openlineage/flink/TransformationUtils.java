@@ -77,6 +77,8 @@ public class TransformationUtils {
 
   public Object processLegacySourceTransformation(Transformation<?> genericTransformation) {
     LegacySourceTransformation transformation = (LegacySourceTransformation) genericTransformation;
+    log.info(
+        "Processing legacy source operator {}", transformation.getOperator().getUserFunction());
     return transformation.getOperator().getUserFunction();
   }
 

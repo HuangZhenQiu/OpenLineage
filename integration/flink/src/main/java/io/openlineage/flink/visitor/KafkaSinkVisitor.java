@@ -58,7 +58,6 @@ public class KafkaSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
       wrapper
           .getAvroSchema()
           .map(schema -> datasetFacetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
-
       log.debug("Kafka output topic: {}", topic);
 
       return Collections.singletonList(

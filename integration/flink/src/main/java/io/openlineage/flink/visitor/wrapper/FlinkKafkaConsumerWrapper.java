@@ -5,16 +5,17 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.Constants.AVRO_DESERIALIZATION_SCHEMA_CLASS;
+
+import io.openlineage.flink.utils.KafkaUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.formats.avro.AvroDeserializationSchema;
-import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer;
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 
 @Slf4j
 public class FlinkKafkaConsumerWrapper {
@@ -37,24 +38,42 @@ public class FlinkKafkaConsumerWrapper {
   }
 
   public List<String> getTopics() throws IllegalAccessException {
-    KafkaTopicsDescriptor descriptor = getField("topicsDescriptor");
-    if (descriptor.isFixedTopics()) {
-      return descriptor.getFixedTopics();
+    try {
+      Object descriptor = getField("topicsDescriptor");
+      if (WrapperUtils.<Boolean>invoke(descriptor.getClass(), descriptor, "isFixedTopics").get()) {
+        log.debug("Getting all topics from fixed topics");
+        return WrapperUtils.<List<String>>invoke(
+                descriptor.getClass(), descriptor, "getFixedTopics")
+            .get();
+      }
+
+      Optional<Pattern> topicPattern =
+          WrapperUtils.<Pattern>getFieldValue(descriptor.getClass(), descriptor, "topicPattern");
+
+      if (topicPattern.isPresent()) {
+        log.debug("Topic pattern is {}", topicPattern.get());
+        List<String> topics =
+            KafkaUtils.getAllTopics(userClassLoader, descriptor, getField("properties"));
+        // Need to additional filter here
+        return topics.stream()
+            .filter(
+                topic -> {
+                  log.debug(
+                      "test pattern match {} result is {}",
+                      topic,
+                      topicPattern.get().matcher(topic).find());
+                  return topicPattern.get().matcher(topic).find();
+                })
+            .collect(Collectors.toList());
+      }
+    } catch (Exception e) {
+      log.error("Cannot get all topics from topic pattern ", e);
     }
 
-    // TODO: this will call Kafka. It's not clear whether we always can use it.
-    Properties kafkaProperties = getField("properties");
-
-    KafkaPartitionDiscoverer partitionDiscoverer =
-        new KafkaPartitionDiscoverer(descriptor, 0, 0, kafkaProperties);
-    WrapperUtils.<List<String>>invoke(
-        KafkaPartitionDiscoverer.class, partitionDiscoverer, "initializeConnections");
-    return WrapperUtils.<List<String>>invoke(
-            KafkaPartitionDiscoverer.class, partitionDiscoverer, "getAllTopics")
-        .get();
+    return List.of();
   }
 
-  public KafkaDeserializationSchema getDeserializationSchema() throws IllegalAccessException {
+  public Object getDeserializationSchema() throws IllegalAccessException {
     return getField("deserializer");
   }
 
@@ -63,25 +82,29 @@ public class FlinkKafkaConsumerWrapper {
         getKafkaDeserializationSchemaWrapperClass();
 
     if (kafkaDeserializationSchemaWrapperClass.isEmpty()) {
-      log.error("Cannot extract Avro schema: KafkaDeserializationSchemaWrapper not found");
+      log.debug("Cannot extract Avro schema: KafkaDeserializationSchemaWrapper not found");
       return Optional.empty();
     }
 
     try {
+      final Class avroDeserializationSchemaClass =
+          userClassLoader.loadClass(AVRO_DESERIALIZATION_SCHEMA_CLASS);
+
       return Optional.of(getDeserializationSchema())
           .filter(
               el -> el.getClass().isAssignableFrom(kafkaDeserializationSchemaWrapperClass.get()))
           .flatMap(
-              el ->
-                  WrapperUtils.<DeserializationSchema>getFieldValue(
-                      el.getClass(), el, "deserializationSchema"))
-          .filter(schema -> schema instanceof AvroDeserializationSchema)
-          .map(schema -> (AvroDeserializationSchema) schema)
-          .map(schema -> schema.getProducedType())
+              el -> WrapperUtils.<Object>getFieldValue(el.getClass(), el, "deserializationSchema"))
+          .filter(schema -> avroDeserializationSchemaClass.isAssignableFrom(schema.getClass()))
+          .map(
+              schema ->
+                  WrapperUtils.<TypeInformation>invoke(
+                          avroDeserializationSchemaClass, schema, "getProducedType")
+                      .get())
           .flatMap(typeInformation -> Optional.ofNullable(typeInformation.getTypeClass()))
           .flatMap(aClass -> WrapperUtils.<Schema>invokeStatic(aClass, "getClassSchema"));
-    } catch (IllegalAccessException e) {
-      log.error("Cannot extract Avro schema: ", e);
+    } catch (IllegalAccessException | ClassNotFoundException e) {
+      log.debug("Cannot extract Avro schema: ", e);
       return Optional.empty();
     }
   }

@@ -24,6 +24,15 @@
               "type": "long"
             }
           ]
+        },
+        "symlinks" : {
+          "identifiers" : [
+            {
+              "namespace" : "kafka://kafka:9092",
+              "name" : "io.openlineage.flink.kafka.input1",
+              "type" : "Kafka"
+            }
+          ]
         }
       }
     },
@@ -40,6 +49,15 @@
             {
               "name": "version",
               "type": "long"
+            }
+          ]
+        },
+        "symlinks" : {
+          "identifiers" : [
+            {
+              "namespace" : "kafka://kafka:9092",
+              "name" : "io.openlineage.flink.kafka.input2",
+              "type" : "Kafka"
             }
           ]
         }
@@ -66,8 +84,17 @@
               "type": "long"
             }
           ]
+        },
+        "symlinks" : {
+          "identifiers" : [
+            {
+              "namespace" : "kafka://kafka:9092",
+              "name" : "io.openlineage.flink.kafka.output",
+              "type" : "Kafka"
+            }
+          ]
         }
       }
     }
   ]
-},
+}

@@ -5,6 +5,11 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.Constants.AVRO_DESERIALIZATION_SCHEMA_CLASS;
+import static io.openlineage.flink.utils.Constants.DESERIALIZATION_SCHEMA_WRAPPER_CLASS;
+import static io.openlineage.flink.utils.Constants.KAFKA_TOPIC_DESCRIPTOR_CLASS;
+
+import io.openlineage.flink.utils.KafkaUtils;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
@@ -23,16 +28,6 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
  */
 @Slf4j
 public class KafkaSourceWrapper {
-
-  private static final String DESERIALIZATION_SCHEMA_WRAPPER_CLASS =
-      "org.apache.flink.connector.kafka.source.reader.deserializer.KafkaValueOnlyDeserializationSchemaWrapper";
-  private static final String KAFKA_TOPIC_DESCRIPTOR_CLASS =
-      "org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor";
-  private static final String KAFKA_PARTITION_DISCOVERER_CLASS =
-      "org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer";
-  private static final String AVRO_DESERIALIZATION_SCHEMA_CLASS =
-      "org.apache.flink.formats.avro.AvroDeserializationSchema";
-
   private final Object kafkaSource;
 
   private final ClassLoader userClassLoader;
@@ -85,18 +80,7 @@ public class KafkaSourceWrapper {
                 .getDeclaredConstructor(List.class, Pattern.class)
                 .newInstance(null, topicPattern.get());
 
-        Class partitionDiscovererClass =
-            userClassLoader.loadClass(KAFKA_PARTITION_DISCOVERER_CLASS);
-        Object partitionDiscoverer =
-            partitionDiscovererClass
-                .getDeclaredConstructor(descriptorClass, int.class, int.class, Properties.class)
-                .newInstance(descriptor, 0, 0, getProps());
-
-        WrapperUtils.<List<String>>invoke(
-            partitionDiscovererClass, partitionDiscoverer, "initializeConnections");
-        return WrapperUtils.<List<String>>invoke(
-                partitionDiscovererClass, partitionDiscoverer, "getAllTopics")
-            .get();
+        return KafkaUtils.getAllTopics(userClassLoader, descriptor, getProps());
       } catch (Exception e) {
         log.debug("Cannot get all topics from topic pattern ", e);
       }
@@ -118,15 +102,16 @@ public class KafkaSourceWrapper {
           userClassLoader.loadClass(AVRO_DESERIALIZATION_SCHEMA_CLASS);
 
       return Optional.of(getDeserializationSchema())
-          .filter(el -> el.getClass().isAssignableFrom(deserializationSchemaWrapperClass))
+          .filter(el -> deserializationSchemaWrapperClass.isAssignableFrom(el.getClass()))
           .flatMap(
               el ->
                   WrapperUtils.<DeserializationSchema>getFieldValue(
                       el.getClass(), el, "deserializationSchema"))
-          .filter(schema -> schema.getClass().isAssignableFrom(avroDeserializationSchemaClass))
+          .filter(schema -> avroDeserializationSchemaClass.isAssignableFrom(schema.getClass()))
           .map(
               schema ->
-                  WrapperUtils.<TypeInformation>invoke(schema.getClass(), schema, "getProducedType")
+                  WrapperUtils.<TypeInformation>invoke(
+                          avroDeserializationSchemaClass, schema, "getProducedType")
                       .get())
           .flatMap(
               typeInformation -> {

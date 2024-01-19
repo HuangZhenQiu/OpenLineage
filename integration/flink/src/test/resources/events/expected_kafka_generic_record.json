@@ -24,6 +24,15 @@
               "type": "long"
             }
           ]
+        },
+        "symlinks" : {
+          "identifiers" : [
+            {
+              "namespace" : "kafka://kafka:9092",
+              "name" : "io.openlineage.flink.kafka.input_no_schema_registry",
+              "type" : "Kafka"
+            }
+          ]
         }
       }
     }
@@ -48,8 +57,17 @@
               "type": "long"
             }
           ]
+        },
+        "symlinks" : {
+          "identifiers" : [
+            {
+              "namespace" : "kafka://kafka:9092",
+              "name" : "io.openlineage.flink.kafka.output",
+              "type" : "Kafka"
+            }
+          ]
         }
       }
     }
   ]
-},
+}

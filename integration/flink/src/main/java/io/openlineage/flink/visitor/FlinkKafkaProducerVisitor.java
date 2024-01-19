@@ -53,17 +53,13 @@ public class FlinkKafkaProducerVisitor extends Visitor<OpenLineage.OutputDataset
         CommonUtils.createSymlinkFacet(
             context.getOpenLineage(), Constants.KAFKA_TYPE, topic, namespace);
 
+    datasetFacetsBuilder.symlinks(symlinksDatasetFacet);
     wrapper
         .getAvroSchema()
-        .map(
-            schema ->
-                datasetFacetsBuilder
-                    .schema(AvroSchemaUtils.convert(context, schema))
-                    .symlinks(symlinksDatasetFacet));
+        .map(schema -> datasetFacetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
 
     log.debug("Kafka output topic: {}", topic);
-
     return Collections.singletonList(
-        outputDataset().getDataset(topic, bootstrapServers, datasetFacetsBuilder));
+        outputDataset().getDataset(topic, namespace, datasetFacetsBuilder));
   }
 }

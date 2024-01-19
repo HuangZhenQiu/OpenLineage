@@ -62,14 +62,11 @@ public class FlinkKafkaConsumerVisitor extends Visitor<OpenLineage.InputDataset>
                 OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
                     CommonUtils.createSymlinkFacet(
                         context.getOpenLineage(), Constants.KAFKA_TYPE, topic, namespace);
-
+                facetsBuilder.symlinks(symlinksDatasetFacet);
                 wrapper
                     .getAvroSchema()
                     .ifPresent(
-                        schema ->
-                            facetsBuilder
-                                .schema(AvroSchemaUtils.convert(context, schema))
-                                .symlinks(symlinksDatasetFacet));
+                        schema -> facetsBuilder.schema(AvroSchemaUtils.convert(context, schema)));
 
                 return builder.facets(facetsBuilder.build()).build();
               })

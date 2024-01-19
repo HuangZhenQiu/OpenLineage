@@ -5,12 +5,15 @@
 package io.openlineage.flink.utils;
 
 import static io.openlineage.flink.utils.Constants.BOOTSTRAP_SERVER;
+import static io.openlineage.flink.utils.Constants.KAFKA_PARTITION_DISCOVERER_CLASS;
+import static io.openlineage.flink.utils.Constants.KAFKA_TOPIC_DESCRIPTOR_CLASS;
 
 import io.openlineage.flink.visitor.wrapper.WrapperUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -20,6 +23,33 @@ import lombok.extern.slf4j.Slf4j;
 public class KafkaUtils {
   public static final String SECURITY_PROTOCOL = "security.protocol";
   public static final String SASL_SSL = "SASL_SSL";
+
+  public static List<String> getAllTopics(
+      ClassLoader userClassLoader, Object descriptor, Properties properties) {
+    try {
+      Class descriptorClass = userClassLoader.loadClass(KAFKA_TOPIC_DESCRIPTOR_CLASS);
+
+      Class partitionDiscovererClass = userClassLoader.loadClass(KAFKA_PARTITION_DISCOVERER_CLASS);
+      Object partitionDiscoverer =
+          partitionDiscovererClass
+              .getDeclaredConstructor(descriptorClass, int.class, int.class, Properties.class)
+              .newInstance(descriptor, 0, 0, properties);
+
+      WrapperUtils.<List<String>>invoke(
+          partitionDiscovererClass, partitionDiscoverer, "initializeConnections");
+      List<String> allTopics =
+          WrapperUtils.<List<String>>invoke(
+                  partitionDiscovererClass, partitionDiscoverer, "getAllTopics")
+              .get();
+
+      log.debug("Get all input topics {}", allTopics);
+      return allTopics;
+    } catch (Exception e) {
+      log.error("Cannot get all topics from topic pattern ", e);
+    }
+
+    return List.of();
+  }
 
   public static Optional<String> resolveBootstrapServerByKaffe(
       ClassLoader classLoader, Properties properties) {
