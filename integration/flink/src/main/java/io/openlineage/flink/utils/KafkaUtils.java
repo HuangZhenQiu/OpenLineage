@@ -28,7 +28,7 @@ public class KafkaUtils {
           classLoader.loadClass(
               "com.apple.pie.queue.kafka.client.configinterceptors.KaffeConfigurationInterceptor");
       Object kaffeConfigInterceptor = interceptorClass.getDeclaredConstructor().newInstance();
-      log.info("Using properties: {} to resolve brokerlist with Kaffe", properties);
+      log.debug("Using properties: {} to resolve brokerlist with Kaffe", properties);
       Map<String, Object> configMap = convert(properties);
       Class kaffeConfigClass =
           classLoader.loadClass("com.apple.pie.queue.kafka.client.kaffe.KaffeConfig");
@@ -42,7 +42,7 @@ public class KafkaUtils {
         Map<String, Object> kaffeConfigMap = kaffeConfigMapOpt.get();
         Properties caffeProperties = new Properties();
         caffeProperties.putAll(kaffeConfigMap);
-        log.info("Using Kaffe properties: {} to resolve brokerlist with Kaffe", caffeProperties);
+        log.debug("Using Kaffe properties: {} to resolve brokerlist with Kaffe", caffeProperties);
         invoke(kaffeConfigInterceptor.getClass(), kaffeConfigInterceptor, "configure", configMap);
         kaffeConfigMap.put(SECURITY_PROTOCOL, SASL_SSL);
 
@@ -58,7 +58,7 @@ public class KafkaUtils {
         | NoSuchMethodException
         | InvocationTargetException
         | ClassNotFoundException e) {
-      log.error("Can't use Kaffe to load configs", e);
+      log.debug("Can't use Kaffe to load configs", e);
       // do nothing here
     }
     return Optional.empty();

@@ -98,7 +98,7 @@ public class KafkaSourceWrapper {
                 partitionDiscovererClass, partitionDiscoverer, "getAllTopics")
             .get();
       } catch (Exception e) {
-        log.error("Cannot get all topics from topic pattern ", e);
+        log.debug("Cannot get all topics from topic pattern ", e);
       }
     }
     return Collections.emptyList();
@@ -144,7 +144,7 @@ public class KafkaSourceWrapper {
                 }
               });
     } catch (ClassNotFoundException | IllegalAccessException e) {
-      log.error("Cannot extract Avro schema: ", e);
+      log.debug("Cannot extract Avro schema: ", e);
       return Optional.empty();
     }
   }

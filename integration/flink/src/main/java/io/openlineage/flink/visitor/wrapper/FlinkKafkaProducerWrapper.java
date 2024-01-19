@@ -56,7 +56,7 @@ public class FlinkKafkaProducerWrapper {
               serializationSchema.getClass(), serializationSchema, "serializationSchema"));
     }
 
-    log.error("Couldn't find Keyed Avro Schema");
+    log.debug("Couldn't find Keyed Avro Schema");
     return Optional.empty();
   }
 
@@ -71,7 +71,7 @@ public class FlinkKafkaProducerWrapper {
           WrapperUtils.getFieldValue(kafkaSchema.getClass(), kafkaSchema, "serializationSchema"));
     }
 
-    log.error("Couldn't find Avro Schema");
+    log.debug("Couldn't find Avro Schema");
     return Optional.empty();
   }
 

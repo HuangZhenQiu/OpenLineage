@@ -48,7 +48,7 @@ public class KafkaSourceVisitor extends Visitor<OpenLineage.InputDataset> {
               : properties.getProperty(BOOTSTRAP_SERVER);
 
       String namespace = KafkaUtils.convertToNamespace(Optional.of(bootstrapServers));
-      topics.forEach(topic -> log.info("Kafka input topic: {}", topic));
+      topics.forEach(topic -> log.debug("Kafka input topic: {}", topic));
       return topics.stream()
           .map(
               topic -> {
