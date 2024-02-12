@@ -5,9 +5,10 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
-import static io.openlineage.flink.utils.Constants.AVRO_DESERIALIZATION_SCHEMA_CLASS;
 import static io.openlineage.flink.utils.Constants.DESERIALIZATION_SCHEMA_WRAPPER_CLASS;
+import static io.openlineage.flink.utils.Constants.DYNAMIC_DESERIALIZATION_SCHEMA_CLASS;
 import static io.openlineage.flink.utils.Constants.KAFKA_TOPIC_DESCRIPTOR_CLASS;
+import static io.openlineage.flink.utils.Constants.VALUE_ONLY_DESERIALIZATION_SCHEMA_WRAPPER_CLASS;
 
 import io.openlineage.flink.utils.KafkaUtils;
 import java.lang.reflect.Field;
@@ -95,42 +96,63 @@ public class KafkaSourceWrapper {
 
   public Optional<Object> getAvroSchema() {
     try {
+      final Class valueOnlyDeserializationSchemaWrapperClass =
+          userClassLoader.loadClass(VALUE_ONLY_DESERIALIZATION_SCHEMA_WRAPPER_CLASS);
+
       final Class deserializationSchemaWrapperClass =
           userClassLoader.loadClass(DESERIALIZATION_SCHEMA_WRAPPER_CLASS);
 
-      final Class avroDeserializationSchemaClass =
-          userClassLoader.loadClass(AVRO_DESERIALIZATION_SCHEMA_CLASS);
+      final Class dynamicDeserializationSchemaWrapperClass =
+          userClassLoader.loadClass(DYNAMIC_DESERIALIZATION_SCHEMA_CLASS);
 
-      return Optional.of(getDeserializationSchema())
-          .filter(el -> deserializationSchemaWrapperClass.isAssignableFrom(el.getClass()))
-          .flatMap(
-              el ->
-                  WrapperUtils.<DeserializationSchema>getFieldValue(
-                      el.getClass(), el, "deserializationSchema"))
-          .filter(schema -> avroDeserializationSchemaClass.isAssignableFrom(schema.getClass()))
-          .map(
-              schema ->
-                  WrapperUtils.<TypeInformation>invoke(
-                          avroDeserializationSchemaClass, schema, "getProducedType")
-                      .get())
-          .flatMap(
-              typeInformation -> {
-                if (typeInformation
-                    .getTypeClass()
-                    .getCanonicalName()
-                    .equals("org.apache.avro.generic.GenericRecord")) {
-                  // GenericRecordAvroTypeInfo -> try to extract private schema field
-                  return WrapperUtils.<Object>getFieldValue(
-                      typeInformation.getClass(), typeInformation, "schema");
-                } else {
-                  return Optional.ofNullable(typeInformation.getTypeClass())
-                      .flatMap(
-                          aClass -> WrapperUtils.<Object>invokeStatic(aClass, "getClassSchema"));
-                }
-              });
+      Object recordDeserializationSchema = getDeserializationSchema();
+      if (valueOnlyDeserializationSchemaWrapperClass.isAssignableFrom(
+          recordDeserializationSchema.getClass())) {
+        return convert(
+            WrapperUtils.<DeserializationSchema>getFieldValue(
+                valueOnlyDeserializationSchemaWrapperClass,
+                recordDeserializationSchema,
+                "deserializationSchema"));
+      } else if (deserializationSchemaWrapperClass.isAssignableFrom(
+          recordDeserializationSchema.getClass())) {
+        Optional<Object> deserializationSchemaOpt =
+            WrapperUtils.<Object>getFieldValue(
+                deserializationSchemaWrapperClass,
+                recordDeserializationSchema,
+                "kafkaDeserializationSchema");
+
+        if (deserializationSchemaOpt.isPresent()) {
+          return convert(
+              WrapperUtils.<DeserializationSchema>getFieldValue(
+                  dynamicDeserializationSchemaWrapperClass,
+                  deserializationSchemaOpt.get(),
+                  "valueDeserialization"));
+        }
+      }
+
+      return Optional.empty();
     } catch (ClassNotFoundException | IllegalAccessException e) {
       log.debug("Cannot extract Avro schema: ", e);
       return Optional.empty();
+    }
+  }
+
+  private Optional<Object> convert(Optional<DeserializationSchema> schemaOpt) {
+    if (schemaOpt.isPresent() && schemaOpt.get().getProducedType() != null) {
+      return convert(schemaOpt.get().getProducedType());
+    }
+
+    return Optional.empty();
+  }
+
+  private Optional<Object> convert(TypeInformation<?> typeInformation) {
+    if (typeInformation.getTypeClass().equals(org.apache.avro.generic.GenericRecord.class)) {
+      // GenericRecordAvroTypeInfo -> try to extract private schema field
+      return WrapperUtils.<Object>getFieldValue(
+          typeInformation.getClass(), typeInformation, "schema");
+    } else {
+      return Optional.ofNullable(typeInformation.getTypeClass())
+          .flatMap(aClass -> WrapperUtils.<Object>invokeStatic(aClass, "getClassSchema"));
     }
   }
 }

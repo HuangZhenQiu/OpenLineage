@@ -18,8 +18,11 @@ import lombok.SneakyThrows;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
+import org.apache.flink.formats.avro.AvroRowDataSerializationSchema;
+import org.apache.flink.formats.avro.AvroSerializationSchema;
 import org.apache.flink.formats.avro.RegistryAvroSerializationSchema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,6 +85,16 @@ class KafkaSinkWrapperTest {
   }
 
   @Test
+  @SneakyThrows
+  void testGetDynamicKafkaTopic() {
+    try (MockedStatic<WrapperUtils> mockedStatic = mockStatic(WrapperUtils.class)) {
+      when(WrapperUtils.getFieldValue(serializationSchema.getClass(), serializationSchema, "topic"))
+          .thenReturn(Optional.ofNullable("topic"));
+      assertEquals("topic", wrapper.getKafkaTopic());
+    }
+  }
+
+  @Test
   void testGetAvroSchema() {
     try (MockedStatic<WrapperUtils> mockedStatic = mockStatic(WrapperUtils.class)) {
       RegistryAvroSerializationSchema avroSerializationSchema =
@@ -92,12 +105,38 @@ class KafkaSinkWrapperTest {
           .thenReturn(Optional.of(avroSerializationSchema));
 
       when(WrapperUtils.invoke(
-              avroSerializationSchema.getClass(), avroSerializationSchema, "getDatumWriter"))
+              AvroSerializationSchema.class, avroSerializationSchema, "getDatumWriter"))
           .thenReturn(Optional.of(genericDatumWriter));
 
       when(WrapperUtils.getFieldValue(GenericDatumWriter.class, genericDatumWriter, "root"))
           .thenReturn(Optional.of(schema));
 
+      assertEquals(schema, wrapper.getAvroSchema().get());
+    }
+  }
+
+  @Test
+  void testGetDynamicAvroSchema() throws Exception {
+    try (MockedStatic<WrapperUtils> mockedStatic = mockStatic(WrapperUtils.class)) {
+      serializationSchema =
+          (KafkaRecordSerializationSchema)
+              mock(
+                  Class.forName(
+                      "org.apache.flink.streaming.connectors.kafka.table.DynamicKafkaRecordSerializationSchema"));
+
+      AvroRowDataSerializationSchema avroSerializationSchema =
+          mock(AvroRowDataSerializationSchema.class);
+      when(WrapperUtils.getFieldValue(
+              serializationSchema.getClass(), serializationSchema, "valueSerialization"))
+          .thenReturn(Optional.of(avroSerializationSchema));
+
+      when(WrapperUtils.getFieldValue(
+              avroSerializationSchema.getClass(), avroSerializationSchema, "schema"))
+          .thenReturn(Optional.of(schema));
+
+      FieldUtils.writeField(wrapper, "serializationSchema", serializationSchema, true);
+      FieldUtils.writeField(
+          serializationSchema, "valueSerialization", avroSerializationSchema, true);
       assertEquals(schema, wrapper.getAvroSchema().get());
     }
   }

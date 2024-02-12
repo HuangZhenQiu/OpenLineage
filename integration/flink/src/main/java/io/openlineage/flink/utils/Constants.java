@@ -18,6 +18,10 @@ public class Constants {
       "org.apache.flink.streaming.connectors.kafka.internals.KafkaPartitionDiscoverer";
   public static final String AVRO_DESERIALIZATION_SCHEMA_CLASS =
       "org.apache.flink.formats.avro.AvroDeserializationSchema";
-  public static final String DESERIALIZATION_SCHEMA_WRAPPER_CLASS =
+  public static final String VALUE_ONLY_DESERIALIZATION_SCHEMA_WRAPPER_CLASS =
       "org.apache.flink.connector.kafka.source.reader.deserializer.KafkaValueOnlyDeserializationSchemaWrapper";
+  public static final String DESERIALIZATION_SCHEMA_WRAPPER_CLASS =
+      "org.apache.flink.connector.kafka.source.reader.deserializer.KafkaDeserializationSchemaWrapper";
+  public static final String DYNAMIC_DESERIALIZATION_SCHEMA_CLASS =
+      "org.apache.flink.streaming.connectors.kafka.table.DynamicKafkaDeserializationSchema";
 }
