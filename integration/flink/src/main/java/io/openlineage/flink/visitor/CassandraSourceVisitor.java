@@ -7,6 +7,8 @@ package io.openlineage.flink.visitor;
 
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.CassandraSourceWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -45,12 +47,26 @@ public class CassandraSourceVisitor extends Visitor<OpenLineage.InputDataset> {
     }
 
     return Collections.singletonList(
-        getDataset(context, sourceWrapper.getKeyspace(), sourceWrapper.getTableName()));
+        getDataset(
+            context,
+            (String) sourceWrapper.getNamespace().get(),
+            (String) sourceWrapper.getTableName().get()));
   }
 
   private OpenLineage.InputDataset getDataset(
-      OpenLineageContext context, String keySpace, String tableName) {
+      OpenLineageContext context, String namespace, String name) {
     OpenLineage openLineage = context.getOpenLineage();
-    return openLineage.newInputDatasetBuilder().name(tableName).namespace(keySpace).build();
+    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+        CommonUtils.createSymlinkFacet(
+            context.getOpenLineage(), Constants.CASSANDRA_TYPE, name, namespace);
+    OpenLineage.DatasetFacets datasetFacets =
+        outputDataset().getDatasetFacetsBuilder().symlinks(symlinksDatasetFacet).build();
+
+    return openLineage
+        .newInputDatasetBuilder()
+        .name(name)
+        .namespace(namespace)
+        .facets(datasetFacets)
+        .build();
   }
 }

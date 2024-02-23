@@ -268,8 +268,10 @@ class ContainerTest {
         mockServerClient
             .retrieveRecordedRequests(this.getEvent("events/expected_cassandra.json"))[0];
 
-    assertThat(StringUtils.countMatches(request.getBodyAsString(), "source_event")).isEqualTo(1);
-    assertThat(StringUtils.countMatches(request.getBodyAsString(), "sink_event")).isEqualTo(1);
+    assertThat(StringUtils.countMatches(request.getBodyAsString(), "flink.source_event"))
+        .isEqualTo(2);
+    assertThat(StringUtils.countMatches(request.getBodyAsString(), "flink.sink_event"))
+        .isEqualTo(2);
   }
 
   @Test

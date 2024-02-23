@@ -5,15 +5,18 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.CassandraUtils.CASSANDRA_INPUT_FORMAT_BASE_CLASS;
 import static org.apache.flink.util.Preconditions.checkState;
 
-import com.datastax.driver.mapping.annotations.Table;
 import io.openlineage.flink.utils.CassandraUtils;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CassandraSourceWrapper<T> {
+
   private static final Pattern SELECT_REGEXP =
       Pattern.compile("(?i)select .+ from (\\w+)\\.(\\w+).*;$");
   private static final String POJO_CLASS_FIELD_NAME = "inputClass";
@@ -37,23 +40,30 @@ public class CassandraSourceWrapper<T> {
     return new CassandraSourceWrapper(userClassLoader, source, sourceClass, hasQuery);
   }
 
-  public String getKeyspace() {
-    if (hasQuery) {
-      return extractFromQuery(1);
-    } else {
-      Class pojoClass = getField(POJO_CLASS_FIELD_NAME);
-      Optional<Table> table = CassandraUtils.extractTableAnnotation(pojoClass);
-      return table.map(t -> t.keyspace()).orElseThrow();
+  public Optional<String> getNamespace() {
+    try {
+      Class inputFormatBase = userClassLoader.loadClass(CASSANDRA_INPUT_FORMAT_BASE_CLASS);
+      Optional<Object> builderOpt = Optional.empty();
+
+      if (inputFormatBase.isAssignableFrom(source.getClass())) {
+        builderOpt = WrapperUtils.<Object>getFieldValue(inputFormatBase, source, "builder");
+      }
+
+      return CassandraUtils.findNamespaceFromBuilder(builderOpt, userClassLoader);
+    } catch (ClassNotFoundException e) {
+      log.error("Failed load class required to infer the Cassandra namespace name", e);
     }
+
+    return Optional.of("");
   }
 
-  public String getTableName() {
+  public Optional<String> getTableName() {
     if (hasQuery) {
-      return extractFromQuery(2);
+      return Optional.of(String.join(".", extractFromQuery(1), extractFromQuery(2)));
     } else {
       Class pojoClass = getField(POJO_CLASS_FIELD_NAME);
-      Optional<Table> table = CassandraUtils.extractTableAnnotation(pojoClass);
-      return table.map(t -> t.name()).orElseThrow();
+      Optional<Object> tableOpt = CassandraUtils.extractTableAnnotation(pojoClass, userClassLoader);
+      return CassandraUtils.findTableName(tableOpt, userClassLoader);
     }
   }
 

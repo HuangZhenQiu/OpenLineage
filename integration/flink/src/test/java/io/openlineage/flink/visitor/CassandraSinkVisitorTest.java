@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.openlineage.client.OpenLineage;
+import io.openlineage.flink.TestUtils;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.client.EventEmitter;
 import io.openlineage.flink.pojo.Event;
@@ -34,7 +35,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class CassandraSinkVisitorTest {
-  private static ClusterBuilder clusterBuilder = mock(ClusterBuilder.class);
   private static String insertQuery = "INSERT INTO flink.sink_event (id) VALUES (uuid());";
   OpenLineageContext context = mock(OpenLineageContext.class);
   OpenLineage openLineage = new OpenLineage(EventEmitter.OPEN_LINEAGE_CLIENT_URI);
@@ -70,20 +70,20 @@ public class CassandraSinkVisitorTest {
     List<OpenLineage.OutputDataset> outputDatasets = cassandraSinkVisitor.apply(sink);
 
     assertEquals(1, outputDatasets.size());
-    assertEquals("flink", outputDatasets.get(0).getNamespace());
-    assertEquals("sink_event", outputDatasets.get(0).getName());
+    assertEquals("cassandra://127.0.0.1:9042", outputDatasets.get(0).getNamespace());
+    assertEquals("flink.sink_event", outputDatasets.get(0).getName());
   }
 
-  private static Stream<Arguments> provideArguments() {
+  private static Stream<Arguments> provideArguments() throws Exception {
+    ClusterBuilder cluster = TestUtils.createClusterBuilder("127.0.0.1");
     CassandraPojoOutputFormat pojoOutputFormat =
-        new CassandraPojoOutputFormat(clusterBuilder, Event.class);
-    CassandraPojoSink pojoSink = new CassandraPojoSink(Event.class, clusterBuilder);
-    CassandraRowOutputFormat rowOutputFormat =
-        new CassandraRowOutputFormat(insertQuery, clusterBuilder);
+        new CassandraPojoOutputFormat(cluster, Event.class);
+    CassandraRowOutputFormat rowOutputFormat = new CassandraRowOutputFormat(insertQuery, cluster);
     CassandraTupleOutputFormat tupleOutputFormat =
-        new CassandraTupleOutputFormat(insertQuery, clusterBuilder);
-    CassandraTupleSink tupleWriteAheadSink = new CassandraTupleSink(insertQuery, clusterBuilder);
-    CassandraRowSink rowSink = new CassandraRowSink(1, insertQuery, clusterBuilder);
+        new CassandraTupleOutputFormat(insertQuery, cluster);
+    CassandraPojoSink pojoSink = new CassandraPojoSink(Event.class, cluster);
+    CassandraTupleSink tupleWriteAheadSink = new CassandraTupleSink(insertQuery, cluster);
+    CassandraRowSink rowSink = new CassandraRowSink(1, insertQuery, cluster);
 
     return Stream.of(
         Arguments.of(pojoOutputFormat),

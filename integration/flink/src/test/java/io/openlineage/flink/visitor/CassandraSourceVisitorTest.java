@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.openlineage.client.OpenLineage;
+import io.openlineage.flink.TestUtils;
 import io.openlineage.flink.api.OpenLineageContext;
 import io.openlineage.flink.client.EventEmitter;
 import io.openlineage.flink.pojo.Event;
@@ -56,15 +57,15 @@ class CassandraSourceVisitorTest {
     List<OpenLineage.InputDataset> inputDatasets = cassandraSourceVisitor.apply(source);
 
     assertEquals(1, inputDatasets.size());
-    assertEquals("flink", inputDatasets.get(0).getNamespace());
-    assertEquals("source_event", inputDatasets.get(0).getName());
+    assertEquals("cassandra://127.0.0.1:9042", inputDatasets.get(0).getNamespace());
+    assertEquals("flink.source_event", inputDatasets.get(0).getName());
   }
 
   private static Stream<Arguments> provideArguments() {
+    ClusterBuilder cluster = TestUtils.createClusterBuilder("127.0.0.1");
     CassandraPojoInputFormat pojoOutputFormat =
-        new CassandraPojoInputFormat(query, clusterBuilder, Event.class);
-    CassandraInputFormat inputFormat = new CassandraInputFormat(query, clusterBuilder);
-
+        new CassandraPojoInputFormat(query, cluster, Event.class);
+    CassandraInputFormat inputFormat = new CassandraInputFormat(query, cluster);
     return Stream.of(Arguments.of(pojoOutputFormat), Arguments.of(inputFormat));
   }
 }

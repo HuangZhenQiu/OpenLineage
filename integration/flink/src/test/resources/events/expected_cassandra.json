@@ -5,11 +5,33 @@
     "name": "flink_examples_cassandra"
   },
   "inputs": [{
-    "namespace": "flink",
-    "name": "source_event"
+    "namespace": "${json-unit.any-string}",
+    "name": "flink.source_event",
+    "facets": {
+      "symlinks" : {
+        "identifiers" : [
+          {
+            "namespace" : "${json-unit.any-string}",
+            "name" : "flink.source_event",
+            "type" : "Cassandra"
+          }
+        ]
+      }
+    }
   }],
   "outputs" : [{
-    "namespace" : "flink",
-    "name" : "sink_event"
+    "namespace" : "${json-unit.any-string}",
+    "name" : "flink.sink_event",
+    "facets": {
+      "symlinks" : {
+        "identifiers" : [
+          {
+            "namespace" : "${json-unit.any-string}",
+            "name" : "flink.sink_event",
+            "type" : "Cassandra"
+          }
+        ]
+      }
+    }
   }]
 }

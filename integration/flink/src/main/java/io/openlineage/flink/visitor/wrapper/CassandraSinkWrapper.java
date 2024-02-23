@@ -5,14 +5,17 @@
 
 package io.openlineage.flink.visitor.wrapper;
 
+import static io.openlineage.flink.utils.CassandraUtils.CASSANDRA_OUTPUT_FORMAT_BASE_CLASS;
+import static io.openlineage.flink.utils.CassandraUtils.CASSANDRA_SINK_BASE_CLASS;
 import static org.apache.flink.util.Preconditions.checkState;
 
-import com.datastax.driver.mapping.annotations.Table;
 import io.openlineage.flink.utils.CassandraUtils;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CassandraSinkWrapper<T> {
   public static final String POJO_OUTPUT_CLASS_FIELD_NAME = "outputClass";
   public static final String POJO_CLASS_FIELD_NAME = "clazz";
@@ -48,23 +51,33 @@ public class CassandraSinkWrapper<T> {
     this.fieldName = fieldName;
   }
 
-  public String getKeySpace() {
-    if (hasInsertQuery) {
-      return extractFromQuery(1);
-    } else {
-      Class pojoClass = getField(fieldName);
-      Optional<Table> table = CassandraUtils.extractTableAnnotation(pojoClass);
-      return table.map(t -> t.keyspace()).orElseThrow();
+  public Optional<String> getNamespace() {
+    try {
+      Class outputFormatBase = userClassLoader.loadClass(CASSANDRA_OUTPUT_FORMAT_BASE_CLASS);
+      Class sinkBase = userClassLoader.loadClass(CASSANDRA_SINK_BASE_CLASS);
+      Optional<Object> builderOpt = Optional.empty();
+
+      if (outputFormatBase.isAssignableFrom(sink.getClass())) {
+        builderOpt = WrapperUtils.<Object>getFieldValue(outputFormatBase, sink, "builder");
+      } else if (sinkBase.isAssignableFrom(sink.getClass())) {
+        builderOpt = WrapperUtils.<Object>getFieldValue(sinkBase, sink, "builder");
+      }
+
+      return CassandraUtils.findNamespaceFromBuilder(builderOpt, userClassLoader);
+    } catch (ClassNotFoundException e) {
+      log.error("Failed load class required to infer the Cassandra namespace name", e);
     }
+
+    return Optional.of("");
   }
 
-  public String getTableName() {
+  public Optional<String> getTableName() {
     if (hasInsertQuery) {
-      return extractFromQuery(2);
+      return Optional.of(String.join(".", extractFromQuery(1), extractFromQuery(2)));
     } else {
       Class pojoClass = getField(fieldName);
-      Optional<Table> table = CassandraUtils.extractTableAnnotation(pojoClass);
-      return table.map(t -> t.name()).orElseThrow();
+      Optional<Object> tableOpt = CassandraUtils.extractTableAnnotation(pojoClass, userClassLoader);
+      return CassandraUtils.findTableName(tableOpt, userClassLoader);
     }
   }
 

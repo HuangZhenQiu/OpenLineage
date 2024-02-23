@@ -11,6 +11,8 @@ import static io.openlineage.flink.visitor.wrapper.CassandraSinkWrapper.POJO_OUT
 
 import io.openlineage.client.OpenLineage;
 import io.openlineage.flink.api.OpenLineageContext;
+import io.openlineage.flink.utils.CommonUtils;
+import io.openlineage.flink.utils.Constants;
 import io.openlineage.flink.visitor.wrapper.CassandraSinkWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -81,7 +83,10 @@ public class CassandraSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
     }
 
     return Collections.singletonList(
-        getDataset(context, sinkWrapper.getKeySpace(), sinkWrapper.getTableName()));
+        getDataset(
+            context,
+            (String) sinkWrapper.getNamespace().get(),
+            (String) sinkWrapper.getTableName().get()));
   }
 
   private CassandraSinkWrapper createWrapperForSink(Object object) {
@@ -134,8 +139,18 @@ public class CassandraSinkVisitor extends Visitor<OpenLineage.OutputDataset> {
   }
 
   private OpenLineage.OutputDataset getDataset(
-      OpenLineageContext context, String keySpace, String tableName) {
+      OpenLineageContext context, String namespace, String name) {
     OpenLineage openLineage = context.getOpenLineage();
-    return openLineage.newOutputDatasetBuilder().name(tableName).namespace(keySpace).build();
+    OpenLineage.SymlinksDatasetFacet symlinksDatasetFacet =
+        CommonUtils.createSymlinkFacet(
+            context.getOpenLineage(), Constants.CASSANDRA_TYPE, name, namespace);
+    OpenLineage.DatasetFacets datasetFacets =
+        outputDataset().getDatasetFacetsBuilder().symlinks(symlinksDatasetFacet).build();
+    return openLineage
+        .newOutputDatasetBuilder()
+        .name(name)
+        .namespace(namespace)
+        .facets(datasetFacets)
+        .build();
   }
 }

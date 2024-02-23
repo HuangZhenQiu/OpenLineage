@@ -41,6 +41,25 @@ public class WrapperUtils {
     }
   }
 
+  /**
+   * Set a field of a given object
+   *
+   * @param aClass class to find a field
+   * @param aObject object that field value will beset
+   * @param fieldValue object as the field value
+   * @param field field name
+   */
+  public static void setFieldValue(Class aClass, Object aObject, Object fieldValue, String field) {
+    try {
+      FieldUtils.getField(aClass, field, true).set(aObject, fieldValue);
+    } catch (IllegalAccessException
+        | ClassCastException
+        | NullPointerException
+        | IllegalArgumentException e) {
+      log.error("cannot extract field {} from {}", field, aClass.getName(), e);
+    }
+  }
+
   public static <T> Optional<T> invoke(Class aClass, Object object, String methodName) {
     try {
       Method method = aClass.getDeclaredMethod(methodName);
