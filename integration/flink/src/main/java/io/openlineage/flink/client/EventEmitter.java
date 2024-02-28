@@ -9,14 +9,15 @@ import io.openlineage.client.Clients;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineageClient;
 import io.openlineage.client.OpenLineageClientException;
-import io.openlineage.client.OpenLineageYaml;
-import io.openlineage.client.transports.TransportFactory;
+import io.openlineage.client.transports.HttpConfig;
+import io.openlineage.client.transports.HttpTransport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.Optional;
 import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 
 @Slf4j
@@ -31,15 +32,29 @@ public class EventEmitter {
       "https://openlineage.io/spec/1-0-1/OpenLineage.json#/definitions/DatasourceDatasetFacet";
   public static final String OPEN_LINEAGE_SCHEMA_FACET_URI =
       "https://openlineage.io/spec/1-0-1/OpenLineage.json#/definitions/SchemaDatasetFacet";
+  public static final String DEFAULT_TRANSPORT_TYPE = "http";
+  public static final String OPEN_LINEAGE_TRANSPORT_TYPE = "openlineage.transport.type";
+  public static final String OPEN_LINEAGE_TRANSPORT_URL = "openlineage.transport.url";
+  public static final String OPEN_LINEAGE_TRANSPORT_ENDPOINT = "openlineage.transport.endpoint";
+
+  @VisibleForTesting
+  public EventEmitter(OpenLineageClient client) {
+    this.client = client;
+  }
 
   public EventEmitter(Configuration configuration) {
-    Optional<OpenLineageYaml> openLineageYaml = FlinkConfigParser.parse(configuration);
-    if (openLineageYaml.isPresent() && openLineageYaml.get().getTransportConfig() != null) {
+    String type = configuration.getString(OPEN_LINEAGE_TRANSPORT_TYPE, "");
+    String url = configuration.getString(OPEN_LINEAGE_TRANSPORT_URL, "");
+    String endpoint = configuration.getString(OPEN_LINEAGE_TRANSPORT_ENDPOINT, "");
+    if (!StringUtils.isBlank(type)
+        && !StringUtils.isBlank(url)
+        && !StringUtils.isBlank(endpoint)
+        && type.equals(DEFAULT_TRANSPORT_TYPE)) {
       // build emitter client based on flink configuration
-      this.client =
-          OpenLineageClient.builder()
-              .transport(new TransportFactory(openLineageYaml.get().getTransportConfig()).build())
-              .build();
+      HttpConfig httpConfig = new HttpConfig();
+      httpConfig.setEndpoint(endpoint);
+      httpConfig.setUrl(URI.create(url));
+      this.client = OpenLineageClient.builder().transport(new HttpTransport(httpConfig)).build();
     } else {
       // build emitter default way - openlineage.yml file or system properties
       client = Clients.newClient();
