@@ -36,6 +36,18 @@ public abstract class Visitor<D extends OpenLineage.Dataset> {
     return false;
   }
 
+  protected OpenLineage.InputDataset createInputDataset(
+      OpenLineageContext context, String namespace, String name) {
+    OpenLineage openLineage = context.getOpenLineage();
+    return openLineage.newInputDatasetBuilder().name(name).namespace(namespace).build();
+  }
+
+  protected OpenLineage.OutputDataset createOutputDataset(
+      OpenLineageContext context, String namespace, String name) {
+    OpenLineage openLineage = context.getOpenLineage();
+    return openLineage.newOutputDatasetBuilder().name(name).namespace(namespace).build();
+  }
+
   protected DatasetFactory<OpenLineage.InputDataset> inputDataset() {
     return DatasetFactory.input(context.getOpenLineage());
   }
