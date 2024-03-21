@@ -19,16 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class IcebergUtils {
 
-  public static boolean hasClasses(ClassLoader classLoader) {
-    try {
-      classLoader.loadClass("org.apache.iceberg.flink.source.StreamingMonitorFunction");
-      return true;
-    } catch (Exception e) {
-      // swallow- we don't care
-    }
-    return false;
-  }
-
   public static OpenLineage.SchemaDatasetFacet getSchema(OpenLineageContext context, Object table) {
     Optional<Object> schemaOpt = WrapperUtils.invoke(table.getClass(), table, "schema");
     if (schemaOpt.isPresent()) {

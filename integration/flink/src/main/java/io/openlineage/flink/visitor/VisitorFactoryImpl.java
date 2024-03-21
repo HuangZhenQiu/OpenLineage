@@ -10,8 +10,7 @@ import io.openlineage.client.OpenLineage.InputDataset;
 import io.openlineage.client.OpenLineage.OutputDataset;
 import io.openlineage.flink.api.DatasetFactory;
 import io.openlineage.flink.api.OpenLineageContext;
-import io.openlineage.flink.utils.CassandraUtils;
-import io.openlineage.flink.utils.IcebergUtils;
+import io.openlineage.flink.utils.ClassUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,13 +30,19 @@ public class VisitorFactoryImpl implements VisitorFactory {
                 new LineageProviderVisitor<>(
                     context, DatasetFactory.input(context.getOpenLineage()))));
 
-    if (IcebergUtils.hasClasses(context.getUserClassLoader())) {
+    if (ClassUtils.hasIcebergClasses(context.getUserClassLoader())) {
       visitors.add(new IcebergSourceVisitor(context));
     }
 
-    if (CassandraUtils.hasClasses(context.getUserClassLoader())) {
+    if (ClassUtils.hasCassandraClasses(context.getUserClassLoader())) {
       visitors.add(new CassandraSourceVisitor(context));
     }
+
+    if (ClassUtils.hasJdbcClasses(context.getUserClassLoader())) {
+      visitors.add(new JdbcSourceVisitor(context));
+    }
+
+    visitors.add(new HybridSourceVisitor(context));
 
     return Collections.unmodifiableList(visitors);
   }
@@ -52,12 +57,16 @@ public class VisitorFactoryImpl implements VisitorFactory {
                 new LineageProviderVisitor<>(
                     context, DatasetFactory.output(context.getOpenLineage()))));
 
-    if (IcebergUtils.hasClasses(context.getUserClassLoader())) {
+    if (ClassUtils.hasIcebergClasses(context.getUserClassLoader())) {
       visitors.add(new IcebergSinkVisitor(context));
     }
 
-    if (CassandraUtils.hasClasses(context.getUserClassLoader())) {
+    if (ClassUtils.hasCassandraClasses(context.getUserClassLoader())) {
       visitors.add(new CassandraSinkVisitor(context));
+    }
+
+    if (ClassUtils.hasJdbcClasses(context.getUserClassLoader())) {
+      visitors.add(new JdbcSinkVisitor(context));
     }
 
     return Collections.unmodifiableList(visitors);

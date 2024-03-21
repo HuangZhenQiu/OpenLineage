@@ -35,18 +35,6 @@ public class CassandraUtils {
     return Optional.of("");
   }
 
-  public static boolean hasClasses(ClassLoader classloader) {
-    try {
-      classloader.loadClass("org.apache.flink.batch.connectors.cassandra.CassandraInputFormat");
-      return true;
-    } catch (Exception e) {
-      // swallow- we don't care
-      log.debug(
-          "Can't load class org.apache.flink.batch.connectors.cassandra.CassandraInputFormat");
-    }
-    return false;
-  }
-
   public static Optional<String> findNamespaceFromBuilder(
       Optional<Object> builderOpt, ClassLoader userClassLoader) {
 
